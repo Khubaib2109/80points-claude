@@ -15,77 +15,79 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
         Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
       min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Lobby Screen */
+    .lobby {
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 100vh;
       padding: 20px;
     }
 
-    .container {
+    .lobby-container {
       background: white;
       border-radius: 16px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       padding: 40px;
-      max-width: 600px;
+      max-width: 500px;
       width: 100%;
     }
 
-    h1 {
+    .lobby h1 {
       color: #333;
       margin-bottom: 24px;
       font-size: 32px;
+      text-align: center;
     }
 
-    .status {
-      padding: 16px;
+    .status-badge {
+      padding: 12px;
       border-radius: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
+      text-align: center;
       font-weight: 600;
     }
 
-    .status.connected {
+    .status-badge.connected {
       background: #d4edda;
       color: #155724;
-      border: 2px solid #c3e6cb;
     }
 
-    .status.disconnected {
+    .status-badge.disconnected {
       background: #f8d7da;
       color: #721c24;
-      border: 2px solid #f5c6cb;
     }
 
-    .message {
-      color: #666;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f8f9fa;
-      border-radius: 6px;
+    .lobby-section {
+      margin: 20px 0;
     }
 
-    .info {
-      color: #888;
-      font-size: 14px;
-      line-height: 1.6;
+    .lobby-section h2 {
+      font-size: 18px;
+      color: #555;
+      margin-bottom: 12px;
     }
 
     button {
-      background: #667eea;
+      background: #2d5a3d;
       color: white;
       border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
+      padding: 14px 28px;
+      border-radius: 8px;
       font-size: 16px;
+      font-weight: 600;
       cursor: pointer;
-      margin-right: 8px;
-      margin-top: 16px;
+      width: 100%;
       transition: background 0.3s;
     }
 
     button:hover {
-      background: #5568d3;
+      background: #1a472a;
     }
 
     button:disabled {
@@ -93,112 +95,447 @@
       cursor: not-allowed;
     }
 
-    .room-section {
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 2px solid #e9ecef;
-    }
-
     input {
-      padding: 10px;
+      width: 100%;
+      padding: 12px;
       border: 2px solid #ddd;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 16px;
-      width: 200px;
-      margin-right: 8px;
+      margin-bottom: 12px;
     }
 
     input:focus {
       outline: none;
-      border-color: #667eea;
+      border-color: #2d5a3d;
     }
 
-    .room-info {
-      margin-top: 16px;
-      padding: 12px;
+    .room-code-display {
       background: #e7f3ff;
-      border-radius: 6px;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
       color: #004085;
+      letter-spacing: 4px;
+      margin: 12px 0;
     }
 
-    .error {
-      color: #d32f2f;
-      background: #ffebee;
-      padding: 12px;
-      border-radius: 6px;
-      margin-top: 16px;
+    /* Game Screen */
+    .game-screen {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .game-screen.active {
+      display: block;
+    }
+
+    /* Game Table */
+    .game-table {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: 1fr 2fr 1fr;
+      grid-template-columns: 1fr 3fr 1fr;
+      gap: 10px;
+      padding: 20px;
+    }
+
+    /* Player Areas */
+    .player-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .player-area.north {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .player-area.east {
+      grid-column: 3;
+      grid-row: 2;
+      writing-mode: vertical-rl;
+    }
+
+    .player-area.south {
+      grid-column: 2;
+      grid-row: 3;
+    }
+
+    .player-area.west {
+      grid-column: 1;
+      grid-row: 2;
+      writing-mode: vertical-rl;
+    }
+
+    .player-info {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      text-align: center;
+      min-width: 150px;
+    }
+
+    .player-name {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .player-status {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .empty-seat {
+      background: rgba(255, 255, 255, 0.3);
+      border: 2px dashed rgba(255, 255, 255, 0.6);
+    }
+
+    .seat-button {
+      margin-top: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      width: auto;
+    }
+
+    /* Center Play Area */
+    .center-area {
+      grid-column: 2;
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .table-center {
+      background: rgba(45, 90, 61, 0.6);
+      border-radius: 20px;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .trick-area {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 20px;
+      width: 300px;
+      height: 300px;
+    }
+
+    .trick-card-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Game Info Overlay */
+    .game-info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      min-width: 200px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
       font-size: 14px;
     }
 
-    .success {
-      color: #2e7d32;
-      background: #e8f5e9;
+    .info-label {
+      font-weight: 600;
+      color: #555;
+    }
+
+    .info-value {
+      color: #333;
+    }
+
+    .trump-indicator {
+      font-size: 24px;
+      margin-left: 8px;
+    }
+
+    /* Cards */
+    .card-hand {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
       padding: 12px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .card {
+      width: 60px;
+      height: 84px;
+      background: white;
+      border: 2px solid #333;
       border-radius: 6px;
-      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-weight: bold;
+      font-size: 18px;
+      position: relative;
+      user-select: none;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    }
+
+    .card.selected {
+      transform: translateY(-12px);
+      border-color: #2d5a3d;
+      border-width: 3px;
+      box-shadow: 0 8px 20px rgba(45, 90, 61, 0.5);
+    }
+
+    .card.red {
+      color: #dc3545;
+    }
+
+    .card.black {
+      color: #333;
+    }
+
+    .card-rank {
+      font-size: 20px;
+    }
+
+    .card-suit {
+      font-size: 24px;
+      margin-top: 4px;
+    }
+
+    .card-back {
+      background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
+      color: white;
+      font-size: 12px;
+    }
+
+    .card-small {
+      width: 50px;
+      height: 70px;
       font-size: 14px;
+    }
+
+    /* Controls */
+    .controls {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+    }
+
+    .control-btn {
+      padding: 10px 24px;
+      font-size: 14px;
+      width: auto;
+    }
+
+    /* Message Banner */
+    .message-banner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.98);
+      padding: 24px 48px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+      z-index: 1000;
+      display: none;
+    }
+
+    .message-banner.show {
+      display: block;
+    }
+
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🃏 80 Points Online</h1>
-    
-    <div id="status" class="status disconnected">
-      <div>Status: <strong>NOT CONNECTED</strong></div>
-    </div>
-
-    <div id="message" class="message">
-      Loading Socket.IO library...
-    </div>
-
-    <div class="info">
-      Server: https://eight0-points-online.onrender.com
-    </div>
-
-    <div class="room-section" id="roomSection" style="display: none;">
-      <h2 style="margin-bottom: 16px; color: #555;">Room Management</h2>
+  <!-- Lobby Screen -->
+  <div id="lobby" class="lobby">
+    <div class="lobby-container">
+      <h1>🃏 80 Points Online</h1>
       
-      <div>
-        <button id="createRoomBtn">Create New Room</button>
+      <div id="statusBadge" class="status-badge disconnected">
+        Connecting...
       </div>
 
-      <div style="margin-top: 16px;">
-        <input type="text" id="roomCodeInput" placeholder="Enter room code" maxlength="6">
-        <button id="joinRoomBtn">Join Room</button>
-      </div>
+      <div id="lobbyContent" class="hidden">
+        <div class="lobby-section">
+          <button id="createRoomBtn" onclick="createRoom()">Create New Room</button>
+        </div>
 
-      <div id="roomInfo" class="room-info" style="display: none;">
-        <strong>Current Room:</strong> <span id="currentRoom"></span>
+        <div class="lobby-section">
+          <h2>Join Existing Room</h2>
+          <input type="text" id="roomCodeInput" placeholder="Enter 6-character code" maxlength="6">
+          <button onclick="joinRoom()">Join Room</button>
+        </div>
+
+        <div id="roomDisplay" class="hidden">
+          <div class="lobby-section">
+            <h2>Your Room Code</h2>
+            <div id="roomCode" class="room-code-display"></div>
+            <p style="text-align: center; color: #666; font-size: 14px;">Share this code with friends!</p>
+            <button onclick="enterGame()" style="margin-top: 16px;">Enter Game Room</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="gameScreen" class="game-screen">
+    <!-- Game Info -->
+    <div class="game-info">
+      <div class="info-row">
+        <span class="info-label">Room:</span>
+        <span class="info-value" id="gameRoomCode">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Players:</span>
+        <span class="info-value" id="playerCount">0/4</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Trump:</span>
+        <span class="info-value" id="trumpSuit">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Score:</span>
+        <span class="info-value" id="score">0/80</span>
       </div>
     </div>
 
-    <div id="errorDiv" class="error" style="display: none;"></div>
-    <div id="successDiv" class="success" style="display: none;"></div>
+    <!-- Game Table -->
+    <div class="game-table">
+      <!-- North Player -->
+      <div class="player-area north">
+        <div id="playerNorth" class="player-info empty-seat">
+          <div class="player-name">North Seat</div>
+          <div class="player-status">Empty</div>
+          <button class="seat-button" onclick="takeSeat('N')">Sit Here</button>
+        </div>
+        <div id="cardsNorth" class="card-hand">
+          <div class="card card-back card-small">?</div>
+          <div class="card card-back card-small">?</div>
+          <div class="card card-back card-small">?</div>
+        </div>
+      </div>
+
+      <!-- East Player -->
+      <div class="player-area east">
+        <div id="playerEast" class="player-info empty-seat">
+          <div class="player-name">East Seat</div>
+          <div class="player-status">Empty</div>
+          <button class="seat-button" onclick="takeSeat('E')">Sit Here</button>
+        </div>
+        <div id="cardsEast" class="card-hand">
+          <div class="card card-back card-small">?</div>
+          <div class="card card-back card-small">?</div>
+          <div class="card card-back card-small">?</div>
+        </div>
+      </div>
+
+      <!-- Center Table -->
+      <div class="center-area">
+        <div class="table-center">
+          <div class="trick-area" id="trickArea">
+            <!-- Played cards will appear here -->
+          </div>
+        </div>
+        
+        <!-- Game Controls -->
+        <div class="controls">
+          <button class="control-btn" onclick="drawCard()" id="drawBtn">Draw Card</button>
+          <button class="control-btn" onclick="playSelected()" id="playBtn" disabled>Play Cards</button>
+          <button class="control-btn" onclick="clearTrick()" id="clearBtn">Clear Trick</button>
+        </div>
+      </div>
+
+      <!-- South Player (You) -->
+      <div class="player-area south">
+        <div id="cardsSouth" class="card-hand">
+          <!-- Your cards will appear here -->
+        </div>
+        <div id="playerSouth" class="player-info">
+          <div class="player-name">You</div>
+          <div class="player-status">Choose a seat</div>
+        </div>
+      </div>
+
+      <!-- West Player -->
+      <div class="player-area west">
+        <div id="cardsWest" class="card-hand">
+          <div class="card card-back card-small">?</div>
+          <div class="card card-back card-small">?</div>
+          <div class="card card-back card-small">?</div>
+        </div>
+        <div id="playerWest" class="player-info empty-seat">
+          <div class="player-name">West Seat</div>
+          <div class="player-status">Empty</div>
+          <button class="seat-button" onclick="takeSeat('W')">Sit Here</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Message Banner -->
+    <div id="messageBanner" class="message-banner"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" crossorigin="anonymous"></script>
   
   <script>
+    let socket;
+    let myRoomCode = null;
+    let mySeat = null;
+    let myHand = [];
+    let selectedCards = [];
+    let gameState = null;
+
+    // Initialize connection
     window.addEventListener('load', function() {
-      const messageDiv = document.getElementById('message');
-      const errorDiv = document.getElementById('errorDiv');
-      const successDiv = document.getElementById('successDiv');
-      
-      if (typeof io === 'undefined') {
-        messageDiv.textContent = 'Socket.IO library failed to load';
-        errorDiv.style.display = 'block';
-        errorDiv.innerHTML = 'Socket.IO could not load. Try using Netlify instead of GitHub Pages: <a href="https://app.netlify.com/drop" target="_blank" style="color: #667eea;">Deploy to Netlify →</a>';
-        return;
-      }
-
-      successDiv.style.display = 'block';
-      successDiv.textContent = 'Socket.IO loaded successfully! ✅';
-      setTimeout(() => { successDiv.style.display = 'none'; }, 3000);
-
-      messageDiv.textContent = 'Connecting to server...';
-
-      const socket = io("https://eight0-points-online.onrender.com", {
+      socket = io("https://eight0-points-online.onrender.com", {
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionDelay: 1000,
@@ -206,100 +543,222 @@
         timeout: 10000
       });
 
-      const statusDiv = document.getElementById('status');
-      const roomSection = document.getElementById('roomSection');
-      const createRoomBtn = document.getElementById('createRoomBtn');
-      const joinRoomBtn = document.getElementById('joinRoomBtn');
-      const roomCodeInput = document.getElementById('roomCodeInput');
-      const roomInfo = document.getElementById('roomInfo');
-      const currentRoom = document.getElementById('currentRoom');
-
-      let myRoomCode = null;
-
       socket.on('connect', () => {
         console.log('Connected! Socket ID:', socket.id);
-        statusDiv.className = 'status connected';
-        statusDiv.innerHTML = '<div>Status: <strong>CONNECTED ✅</strong></div>';
-        messageDiv.textContent = 'Successfully connected to the game server!';
-        roomSection.style.display = 'block';
-        errorDiv.style.display = 'none';
+        document.getElementById('statusBadge').className = 'status-badge connected';
+        document.getElementById('statusBadge').textContent = 'Connected ✅';
+        document.getElementById('lobbyContent').classList.remove('hidden');
       });
 
-      socket.on('disconnect', (reason) => {
-        console.log('Disconnected. Reason:', reason);
-        statusDiv.className = 'status disconnected';
-        statusDiv.innerHTML = '<div>Status: <strong>DISCONNECTED ❌</strong></div>';
-        messageDiv.textContent = 'Lost connection. Reconnecting...';
-        roomSection.style.display = 'none';
-      });
-
-      socket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-        messageDiv.textContent = 'Connection failed';
-        errorDiv.style.display = 'block';
-        errorDiv.innerHTML = `Cannot connect to server.<br><br>Possible reasons:<br>
-          1. Render server is sleeping (free tier) - wait 30 seconds and refresh<br>
-          2. Check server status: <a href="https://dashboard.render.com" target="_blank" style="color: #667eea;">Render Dashboard →</a><br>
-          3. Server health check: <a href="https://eight0-points-online.onrender.com/health" target="_blank" style="color: #667eea;">Test Server →</a>`;
+      socket.on('disconnect', () => {
+        console.log('Disconnected');
+        document.getElementById('statusBadge').className = 'status-badge disconnected';
+        document.getElementById('statusBadge').textContent = 'Disconnected ❌';
       });
 
       socket.on('room_created', (data) => {
         console.log('Room created:', data);
         myRoomCode = data.code;
-        currentRoom.textContent = data.code;
-        roomInfo.style.display = 'block';
-        messageDiv.textContent = `Room created! Share code: ${data.code}`;
+        document.getElementById('roomCode').textContent = data.code;
+        document.getElementById('roomDisplay').classList.remove('hidden');
       });
 
       socket.on('joined_room', (data) => {
         console.log('Joined room:', data);
         myRoomCode = data.code;
-        currentRoom.textContent = data.code;
-        roomInfo.style.display = 'block';
-        messageDiv.textContent = `Successfully joined room: ${data.code}`;
       });
 
       socket.on('room_state', (state) => {
         console.log('Room state:', state);
-        const playerCount = Object.values(state.seats).filter(Boolean).length;
-        messageDiv.textContent = `Room: ${state.code} | Players: ${playerCount}/4`;
+        gameState = state;
+        updateGameUI(state);
       });
 
       socket.on('error_msg', (data) => {
-        console.error('Server error:', data);
-        errorDiv.style.display = 'block';
-        errorDiv.textContent = `Error: ${data.message}`;
-        setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+        showMessage(data.message, 3000);
       });
-
-      createRoomBtn.addEventListener('click', () => {
-        console.log('Creating room...');
-        messageDiv.textContent = 'Creating room...';
-        socket.emit('create_room');
-      });
-
-      joinRoomBtn.addEventListener('click', () => {
-        const code = roomCodeInput.value.trim().toUpperCase();
-        if (code.length === 6) {
-          console.log('Joining room:', code);
-          messageDiv.textContent = `Joining room ${code}...`;
-          socket.emit('join_room', { code });
-          roomCodeInput.value = '';
-        } else {
-          errorDiv.style.display = 'block';
-          errorDiv.textContent = 'Please enter a valid 6-character room code';
-          setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
-        }
-      });
-
-      roomCodeInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          joinRoomBtn.click();
-        }
-      });
-
-      console.log('80 Points client initialized');
     });
+
+    function createRoom() {
+      socket.emit('create_room');
+    }
+
+    function joinRoom() {
+      const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+      if (code.length === 6) {
+        socket.emit('join_room', { code });
+        myRoomCode = code;
+        document.getElementById('roomCode').textContent = code;
+        document.getElementById('roomDisplay').classList.remove('hidden');
+      } else {
+        showMessage('Please enter a 6-character code', 2000);
+      }
+    }
+
+    function enterGame() {
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('gameScreen').classList.add('active');
+      document.getElementById('gameRoomCode').textContent = myRoomCode;
+    }
+
+    function takeSeat(seat) {
+      mySeat = seat;
+      socket.emit('sit', { code: myRoomCode, seat: seat });
+      showMessage(`You took the ${getSeatName(seat)} seat!`, 2000);
+    }
+
+    function drawCard() {
+      socket.emit('draw_card', { code: myRoomCode });
+    }
+
+    function playSelected() {
+      if (selectedCards.length === 0) {
+        showMessage('Select cards to play first!', 2000);
+        return;
+      }
+      socket.emit('play_cards', { code: myRoomCode, cardIds: selectedCards });
+      selectedCards = [];
+      document.getElementById('playBtn').disabled = true;
+    }
+
+    function clearTrick() {
+      socket.emit('clear_trick', { code: myRoomCode });
+    }
+
+    function updateGameUI(state) {
+      // Update player count
+      const playerCount = Object.values(state.seats).filter(Boolean).length;
+      document.getElementById('playerCount').textContent = `${playerCount}/4`;
+
+      // Update seats
+      updateSeats(state.seats);
+
+      // Update your hand
+      if (state.yourHand) {
+        myHand = state.yourHand;
+        renderHand();
+      }
+
+      // Update trick area
+      renderTrickArea(state.table);
+    }
+
+    function updateSeats(seats) {
+      ['N', 'E', 'S', 'W'].forEach(seat => {
+        const seatDiv = document.getElementById(`player${getSeatName(seat)}`);
+        if (seats[seat]) {
+          seatDiv.classList.remove('empty-seat');
+          const isMe = seats[seat] === socket.id;
+          seatDiv.innerHTML = `
+            <div class="player-name">${isMe ? 'You' : getSeatName(seat)}</div>
+            <div class="player-status">${isMe ? mySeat === seat ? '(Seated)' : '' : 'Occupied'}</div>
+          `;
+        } else {
+          seatDiv.classList.add('empty-seat');
+          seatDiv.innerHTML = `
+            <div class="player-name">${getSeatName(seat)} Seat</div>
+            <div class="player-status">Empty</div>
+            <button class="seat-button" onclick="takeSeat('${seat}')">Sit Here</button>
+          `;
+        }
+      });
+    }
+
+    function renderHand() {
+      const handDiv = document.getElementById('cardsSouth');
+      handDiv.innerHTML = '';
+      
+      myHand.forEach(card => {
+        const cardEl = createCardElement(card, true);
+        handDiv.appendChild(cardEl);
+      });
+    }
+
+    function createCardElement(card, clickable = false) {
+      const div = document.createElement('div');
+      div.className = 'card';
+      
+      const { rank, suit, jokerType } = card;
+      const { symbol, color } = getCardDisplay(suit, jokerType);
+      
+      div.classList.add(color);
+      
+      div.innerHTML = `
+        <span class="card-rank">${getRankDisplay(rank)}</span>
+        <span class="card-suit">${symbol}</span>
+      `;
+      
+      if (clickable) {
+        div.onclick = () => toggleCardSelection(card.id, div);
+      }
+      
+      return div;
+    }
+
+    function toggleCardSelection(cardId, element) {
+      const index = selectedCards.indexOf(cardId);
+      if (index > -1) {
+        selectedCards.splice(index, 1);
+        element.classList.remove('selected');
+      } else {
+        selectedCards.push(cardId);
+        element.classList.add('selected');
+      }
+      document.getElementById('playBtn').disabled = selectedCards.length === 0;
+    }
+
+    function renderTrickArea(table) {
+      const trickDiv = document.getElementById('trickArea');
+      trickDiv.innerHTML = '';
+      
+      for (const [socketId, cards] of Object.entries(table)) {
+        const slot = document.createElement('div');
+        slot.className = 'trick-card-slot';
+        
+        cards.forEach(card => {
+          const cardEl = createCardElement(card, false);
+          cardEl.classList.add('card-small');
+          slot.appendChild(cardEl);
+        });
+        
+        trickDiv.appendChild(slot);
+      }
+    }
+
+    function getCardDisplay(suit, jokerType) {
+      if (jokerType) {
+        return { symbol: '🃏', color: jokerType === 'RED' ? 'red' : 'black' };
+      }
+      const suits = {
+        'S': { symbol: '♠', color: 'black' },
+        'H': { symbol: '♥', color: 'red' },
+        'D': { symbol: '♦', color: 'red' },
+        'C': { symbol: '♣', color: 'black' }
+      };
+      return suits[suit] || { symbol: '?', color: 'black' };
+    }
+
+    function getRankDisplay(rank) {
+      const ranks = {
+        14: 'A', 13: 'K', 12: 'Q', 11: 'J',
+        15: 'JB', 16: 'JR'
+      };
+      return ranks[rank] || rank;
+    }
+
+    function getSeatName(seat) {
+      const names = { N: 'North', E: 'East', S: 'South', W: 'West' };
+      return names[seat] || seat;
+    }
+
+    function showMessage(text, duration = 3000) {
+      const banner = document.getElementById('messageBanner');
+      banner.textContent = text;
+      banner.classList.add('show');
+      setTimeout(() => {
+        banner.classList.remove('show');
+      }, duration);
+    }
   </script>
 </body>
 </html>
