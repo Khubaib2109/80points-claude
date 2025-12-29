@@ -182,6 +182,18 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       text-align: center;
       min-width: 150px;
+      position: relative;
+    }
+
+    .player-info.current-turn {
+      border: 3px solid #ffd43b;
+      box-shadow: 0 0 20px rgba(255, 212, 59, 0.6);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 212, 59, 0.6); }
+      50% { box-shadow: 0 0 30px rgba(255, 212, 59, 0.9); }
     }
 
     .player-name {
@@ -577,6 +589,7 @@
     let gameState = null;
     let playerNames = {};
     let startingPlayer = null;
+    let currentTurn = null; // Track whose turn it is
 
     // Initialize connection
     window.addEventListener('load', function() {
@@ -749,12 +762,24 @@
         'E': 'Attackers', 'W': 'Attackers'
       };
 
+      // Simple turn rotation: N -> E -> S -> W -> N
+      const turnOrder = ['N', 'E', 'S', 'W'];
+      if (!currentTurn && Object.values(seats).filter(Boolean).length === 4) {
+        currentTurn = 'N'; // Start with North
+      }
+
       ['N', 'E', 'S', 'W'].forEach(seat => {
         const seatDiv = document.getElementById(`player${getSeatName(seat)}`);
         const isStartingPlayer = startingPlayer === seat;
+        const isCurrentTurn = currentTurn === seat;
         
         if (seats[seat]) {
           seatDiv.classList.remove('empty-seat');
+          if (isCurrentTurn) {
+            seatDiv.classList.add('current-turn');
+          } else {
+            seatDiv.classList.remove('current-turn');
+          }
           if (isStartingPlayer) {
             seatDiv.classList.add('starting-player');
           } else {
@@ -769,11 +794,12 @@
           seatDiv.innerHTML = `
             <div class="player-name">${playerName}</div>
             <div class="team-badge ${teamClass}">${team}</div>
+            ${isCurrentTurn ? '<div class="player-status" style="color: #ffd43b; font-weight: bold;">🎯 Your Turn</div>' : ''}
             ${isStartingPlayer ? '<div class="player-status" style="color: #ffd43b; font-weight: bold;">⭐ Starting Player</div>' : ''}
             ${isMe && mySeat === seat ? '<div class="player-status">(You)</div>' : ''}
           `;
         } else {
-          seatDiv.classList.remove('starting-player');
+          seatDiv.classList.remove('starting-player', 'current-turn');
           seatDiv.classList.add('empty-seat');
           seatDiv.innerHTML = `
             <div class="player-name">${getSeatName(seat)} Seat</div>
