@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com https://unpkg.com; connect-src 'self' https://eight0-points-online.onrender.com wss://eight0-points-online.onrender.com; style-src 'self' 'unsafe-inline';">
   <title>80 Points Online</title>
   <style>
     * {
@@ -128,6 +129,15 @@
       margin-top: 16px;
       font-size: 14px;
     }
+
+    .success {
+      color: #2e7d32;
+      background: #e8f5e9;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -164,47 +174,38 @@
     </div>
 
     <div id="errorDiv" class="error" style="display: none;"></div>
+    <div id="successDiv" class="success" style="display: none;"></div>
   </div>
 
-  <!-- Socket.IO Client Library from CDN -->
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" 
-          integrity="sha384-7bLcbQdJvCxIjfLdPLLF4bPMmQqGdPzZvSZzFjL1tqYHdMfZf5VZcEZyMPkPKEHB" 
-          crossorigin="anonymous"
-          onerror="handleScriptError()"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" crossorigin="anonymous"></script>
   
   <script>
-    function handleScriptError() {
-      const messageDiv = document.getElementById('message');
-      const errorDiv = document.getElementById('errorDiv');
-      messageDiv.textContent = 'Failed to load Socket.IO library from CDN';
-      errorDiv.style.display = 'block';
-      errorDiv.innerHTML = 'Could not load Socket.IO. Please check your internet connection or try using a different network.';
-    }
-
-    // Wait for Socket.IO to load
     window.addEventListener('load', function() {
       const messageDiv = document.getElementById('message');
       const errorDiv = document.getElementById('errorDiv');
+      const successDiv = document.getElementById('successDiv');
       
-      // Check if io is defined
       if (typeof io === 'undefined') {
         messageDiv.textContent = 'Socket.IO library failed to load';
         errorDiv.style.display = 'block';
-        errorDiv.innerHTML = 'Socket.IO CDN appears to be blocked or unavailable. Try:<br>1. Checking your internet connection<br>2. Disabling ad blockers<br>3. Using a different network';
+        errorDiv.innerHTML = 'Socket.IO could not load. Try using Netlify instead of GitHub Pages: <a href="https://app.netlify.com/drop" target="_blank" style="color: #667eea;">Deploy to Netlify →</a>';
         return;
       }
 
+      successDiv.style.display = 'block';
+      successDiv.textContent = 'Socket.IO loaded successfully! ✅';
+      setTimeout(() => { successDiv.style.display = 'none'; }, 3000);
+
       messageDiv.textContent = 'Connecting to server...';
 
-      // Connect to your Render server
       const socket = io("https://eight0-points-online.onrender.com", {
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionDelay: 1000,
-        reconnectionAttempts: 5
+        reconnectionAttempts: 5,
+        timeout: 10000
       });
 
-      // DOM elements
       const statusDiv = document.getElementById('status');
       const roomSection = document.getElementById('roomSection');
       const createRoomBtn = document.getElementById('createRoomBtn');
@@ -215,9 +216,8 @@
 
       let myRoomCode = null;
 
-      // Connection handlers
       socket.on('connect', () => {
-        console.log('Connected to server!');
+        console.log('Connected! Socket ID:', socket.id);
         statusDiv.className = 'status connected';
         statusDiv.innerHTML = '<div>Status: <strong>CONNECTED ✅</strong></div>';
         messageDiv.textContent = 'Successfully connected to the game server!';
@@ -225,11 +225,11 @@
         errorDiv.style.display = 'none';
       });
 
-      socket.on('disconnect', () => {
-        console.log('Disconnected from server');
+      socket.on('disconnect', (reason) => {
+        console.log('Disconnected. Reason:', reason);
         statusDiv.className = 'status disconnected';
         statusDiv.innerHTML = '<div>Status: <strong>DISCONNECTED ❌</strong></div>';
-        messageDiv.textContent = 'Lost connection to server. Attempting to reconnect...';
+        messageDiv.textContent = 'Lost connection. Reconnecting...';
         roomSection.style.display = 'none';
       });
 
@@ -237,20 +237,18 @@
         console.error('Connection error:', error);
         messageDiv.textContent = 'Connection failed';
         errorDiv.style.display = 'block';
-        errorDiv.innerHTML = `Cannot connect to server. Possible reasons:<br>
-          1. Your Render server might be sleeping (free tier spins down after inactivity)<br>
-          2. Server URL might be incorrect<br>
-          3. CORS settings on server<br>
-          <br>Visit your Render dashboard to check if the server is running.`;
+        errorDiv.innerHTML = `Cannot connect to server.<br><br>Possible reasons:<br>
+          1. Render server is sleeping (free tier) - wait 30 seconds and refresh<br>
+          2. Check server status: <a href="https://dashboard.render.com" target="_blank" style="color: #667eea;">Render Dashboard →</a><br>
+          3. Server health check: <a href="https://eight0-points-online.onrender.com/health" target="_blank" style="color: #667eea;">Test Server →</a>`;
       });
 
-      // Room handlers
       socket.on('room_created', (data) => {
         console.log('Room created:', data);
         myRoomCode = data.code;
         currentRoom.textContent = data.code;
         roomInfo.style.display = 'block';
-        messageDiv.textContent = `Room created! Code: ${data.code}`;
+        messageDiv.textContent = `Room created! Share code: ${data.code}`;
       });
 
       socket.on('joined_room', (data) => {
@@ -262,17 +260,21 @@
       });
 
       socket.on('room_state', (state) => {
-        console.log('Room state update:', state);
+        console.log('Room state:', state);
+        const playerCount = Object.values(state.seats).filter(Boolean).length;
+        messageDiv.textContent = `Room: ${state.code} | Players: ${playerCount}/4`;
       });
 
       socket.on('error_msg', (data) => {
         console.error('Server error:', data);
-        messageDiv.textContent = `Error: ${data.message}`;
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error: ${data.message}`;
+        setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
       });
 
-      // Button handlers
       createRoomBtn.addEventListener('click', () => {
         console.log('Creating room...');
+        messageDiv.textContent = 'Creating room...';
         socket.emit('create_room');
       });
 
@@ -280,14 +282,16 @@
         const code = roomCodeInput.value.trim().toUpperCase();
         if (code.length === 6) {
           console.log('Joining room:', code);
+          messageDiv.textContent = `Joining room ${code}...`;
           socket.emit('join_room', { code });
           roomCodeInput.value = '';
         } else {
-          messageDiv.textContent = 'Please enter a valid 6-character room code';
+          errorDiv.style.display = 'block';
+          errorDiv.textContent = 'Please enter a valid 6-character room code';
+          setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
         }
       });
 
-      // Allow Enter key to join room
       roomCodeInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
           joinRoomBtn.click();
