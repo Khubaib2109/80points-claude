@@ -93,6 +93,7 @@
     button:disabled {
       background: #ccc;
       cursor: not-allowed;
+      opacity: 0.6;
     }
 
     input {
@@ -161,7 +162,6 @@
     .player-area.east {
       grid-column: 3;
       grid-row: 2;
-      writing-mode: vertical-rl;
     }
 
     .player-area.south {
@@ -172,7 +172,6 @@
     .player-area.west {
       grid-column: 1;
       grid-row: 2;
-      writing-mode: vertical-rl;
     }
 
     .player-info {
@@ -189,11 +188,37 @@
       font-weight: bold;
       color: #333;
       margin-bottom: 4px;
+      font-size: 16px;
     }
 
     .player-status {
       font-size: 12px;
       color: #666;
+      margin-top: 4px;
+    }
+
+    .team-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-top: 6px;
+    }
+
+    .team-attackers {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .team-defenders {
+      background: #4dabf7;
+      color: white;
+    }
+
+    .starting-player {
+      border: 3px solid #ffd43b;
+      box-shadow: 0 0 20px rgba(255, 212, 59, 0.5);
     }
 
     .empty-seat {
@@ -244,6 +269,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-wrap: wrap;
+      gap: 4px;
     }
 
     /* Game Info Overlay */
@@ -274,20 +301,16 @@
       color: #333;
     }
 
-    .trump-indicator {
-      font-size: 24px;
-      margin-left: 8px;
-    }
-
     /* Cards */
     .card-hand {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
       justify-content: center;
       padding: 12px;
       max-width: 100%;
       overflow-x: auto;
+      min-height: 100px;
     }
 
     .card {
@@ -328,6 +351,10 @@
       color: #333;
     }
 
+    .card.point-card {
+      background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+    }
+
     .card-rank {
       font-size: 20px;
     }
@@ -344,9 +371,17 @@
     }
 
     .card-small {
-      width: 50px;
-      height: 70px;
-      font-size: 14px;
+      width: 45px;
+      height: 63px;
+      font-size: 12px;
+    }
+
+    .card-small .card-rank {
+      font-size: 16px;
+    }
+
+    .card-small .card-suit {
+      font-size: 18px;
     }
 
     /* Controls */
@@ -390,6 +425,10 @@
     .hidden {
       display: none !important;
     }
+
+    .name-input-container {
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 <body>
@@ -403,6 +442,11 @@
       </div>
 
       <div id="lobbyContent" class="hidden">
+        <div class="name-input-container">
+          <label for="playerNameInput" style="display: block; margin-bottom: 8px; color: #555; font-weight: 600;">Your Name</label>
+          <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="20" value="Player">
+        </div>
+
         <div class="lobby-section">
           <button id="createRoomBtn" onclick="createRoom()">Create New Room</button>
         </div>
@@ -439,11 +483,15 @@
       </div>
       <div class="info-row">
         <span class="info-label">Trump:</span>
-        <span class="info-value" id="trumpSuit">-</span>
+        <span class="info-value" id="trumpSuit">Not set</span>
       </div>
       <div class="info-row">
         <span class="info-label">Score:</span>
         <span class="info-value" id="score">0/80</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Deck:</span>
+        <span class="info-value" id="deckCount">108</span>
       </div>
     </div>
 
@@ -457,23 +505,19 @@
           <button class="seat-button" onclick="takeSeat('N')">Sit Here</button>
         </div>
         <div id="cardsNorth" class="card-hand">
-          <div class="card card-back card-small">?</div>
-          <div class="card card-back card-small">?</div>
-          <div class="card card-back card-small">?</div>
+          <!-- Cards will appear here -->
         </div>
       </div>
 
       <!-- East Player -->
       <div class="player-area east">
+        <div id="cardsEast" class="card-hand">
+          <!-- Cards will appear here -->
+        </div>
         <div id="playerEast" class="player-info empty-seat">
           <div class="player-name">East Seat</div>
           <div class="player-status">Empty</div>
           <button class="seat-button" onclick="takeSeat('E')">Sit Here</button>
-        </div>
-        <div id="cardsEast" class="card-hand">
-          <div class="card card-back card-small">?</div>
-          <div class="card card-back card-small">?</div>
-          <div class="card card-back card-small">?</div>
         </div>
       </div>
 
@@ -506,15 +550,13 @@
 
       <!-- West Player -->
       <div class="player-area west">
-        <div id="cardsWest" class="card-hand">
-          <div class="card card-back card-small">?</div>
-          <div class="card card-back card-small">?</div>
-          <div class="card card-back card-small">?</div>
-        </div>
         <div id="playerWest" class="player-info empty-seat">
           <div class="player-name">West Seat</div>
           <div class="player-status">Empty</div>
           <button class="seat-button" onclick="takeSeat('W')">Sit Here</button>
+        </div>
+        <div id="cardsWest" class="card-hand">
+          <!-- Cards will appear here -->
         </div>
       </div>
     </div>
@@ -529,9 +571,12 @@
     let socket;
     let myRoomCode = null;
     let mySeat = null;
+    let myName = "Player";
     let myHand = [];
     let selectedCards = [];
     let gameState = null;
+    let playerNames = {};
+    let startingPlayer = null;
 
     // Initialize connection
     window.addEventListener('load', function() {
@@ -575,16 +620,20 @@
       });
 
       socket.on('error_msg', (data) => {
+        console.error('Error:', data);
         showMessage(data.message, 3000);
       });
     });
 
     function createRoom() {
+      myName = document.getElementById('playerNameInput').value.trim() || "Player";
       socket.emit('create_room');
     }
 
     function joinRoom() {
       const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+      myName = document.getElementById('playerNameInput').value.trim() || "Player";
+      
       if (code.length === 6) {
         socket.emit('join_room', { code });
         myRoomCode = code;
@@ -602,12 +651,20 @@
     }
 
     function takeSeat(seat) {
+      if (!myName) {
+        myName = prompt("Enter your name:") || "Player";
+      }
       mySeat = seat;
+      playerNames[socket.id] = myName;
       socket.emit('sit', { code: myRoomCode, seat: seat });
       showMessage(`You took the ${getSeatName(seat)} seat!`, 2000);
     }
 
     function drawCard() {
+      if (!mySeat) {
+        showMessage('Please take a seat first!', 2000);
+        return;
+      }
       socket.emit('draw_card', { code: myRoomCode });
     }
 
@@ -629,34 +686,80 @@
       // Update player count
       const playerCount = Object.values(state.seats).filter(Boolean).length;
       document.getElementById('playerCount').textContent = `${playerCount}/4`;
+      document.getElementById('deckCount').textContent = state.deckCount || 0;
 
       // Update seats
       updateSeats(state.seats);
 
       // Update your hand
       if (state.yourHand) {
-        myHand = state.yourHand;
+        myHand = sortHand(state.yourHand);
         renderHand();
+      }
+
+      // Update other players' card counts
+      if (state.handCounts) {
+        updateOtherPlayerCardCounts(state.handCounts);
       }
 
       // Update trick area
       renderTrickArea(state.table);
     }
 
+    function sortHand(hand) {
+      const suitOrder = { 'S': 1, 'H': 2, 'D': 3, 'C': 4 };
+      
+      return hand.sort((a, b) => {
+        // Jokers come last
+        if (!a.suit && !b.suit) return a.rank - b.rank;
+        if (!a.suit) return 1;
+        if (!b.suit) return -1;
+        
+        // Sort by suit first
+        const suitDiff = suitOrder[a.suit] - suitOrder[b.suit];
+        if (suitDiff !== 0) return suitDiff;
+        
+        // Then by rank
+        return a.rank - b.rank;
+      });
+    }
+
     function updateSeats(seats) {
+      // Determine teams (N-S vs E-W)
+      const teams = {
+        'N': 'Defenders', 'S': 'Defenders',
+        'E': 'Attackers', 'W': 'Attackers'
+      };
+
       ['N', 'E', 'S', 'W'].forEach(seat => {
         const seatDiv = document.getElementById(`player${getSeatName(seat)}`);
+        const isStartingPlayer = startingPlayer === seat;
+        
         if (seats[seat]) {
           seatDiv.classList.remove('empty-seat');
+          if (isStartingPlayer) {
+            seatDiv.classList.add('starting-player');
+          } else {
+            seatDiv.classList.remove('starting-player');
+          }
+          
           const isMe = seats[seat] === socket.id;
+          const playerName = isMe ? myName : (playerNames[seats[seat]] || getSeatName(seat));
+          const team = teams[seat];
+          const teamClass = team === 'Attackers' ? 'team-attackers' : 'team-defenders';
+          
           seatDiv.innerHTML = `
-            <div class="player-name">${isMe ? 'You' : getSeatName(seat)}</div>
-            <div class="player-status">${isMe ? mySeat === seat ? '(Seated)' : '' : 'Occupied'}</div>
+            <div class="player-name">${playerName}</div>
+            <div class="team-badge ${teamClass}">${team}</div>
+            ${isStartingPlayer ? '<div class="player-status" style="color: #ffd43b; font-weight: bold;">⭐ Starting Player</div>' : ''}
+            ${isMe && mySeat === seat ? '<div class="player-status">(You)</div>' : ''}
           `;
         } else {
+          seatDiv.classList.remove('starting-player');
           seatDiv.classList.add('empty-seat');
           seatDiv.innerHTML = `
             <div class="player-name">${getSeatName(seat)} Seat</div>
+            <div class="team-badge ${teams[seat] === 'Attackers' ? 'team-attackers' : 'team-defenders'}">${teams[seat]}</div>
             <div class="player-status">Empty</div>
             <button class="seat-button" onclick="takeSeat('${seat}')">Sit Here</button>
           `;
@@ -664,9 +767,38 @@
       });
     }
 
+    function updateOtherPlayerCardCounts(handCounts) {
+      ['N', 'E', 'S', 'W'].forEach(seat => {
+        const cardArea = document.getElementById(`cards${getSeatName(seat)}`);
+        
+        // Skip your own hand
+        if (gameState && gameState.seats && gameState.seats[seat] === socket.id) {
+          return;
+        }
+        
+        const socketId = gameState.seats[seat];
+        if (socketId && handCounts[socketId]) {
+          const count = handCounts[socketId];
+          cardArea.innerHTML = '';
+          
+          // Show card backs for other players
+          for (let i = 0; i < Math.min(count, 25); i++) {
+            const cardBack = document.createElement('div');
+            cardBack.className = 'card card-back card-small';
+            cardBack.textContent = '?';
+            cardArea.appendChild(cardBack);
+          }
+        }
+      });
+    }
+
     function renderHand() {
       const handDiv = document.getElementById('cardsSouth');
       handDiv.innerHTML = '';
+      
+      if (myHand.length === 0) {
+        return;
+      }
       
       myHand.forEach(card => {
         const cardEl = createCardElement(card, true);
@@ -682,6 +814,11 @@
       const { symbol, color } = getCardDisplay(suit, jokerType);
       
       div.classList.add(color);
+      
+      // Highlight point cards (5, 10, K)
+      if (rank === 5 || rank === 10 || rank === 13) {
+        div.classList.add('point-card');
+      }
       
       div.innerHTML = `
         <span class="card-rank">${getRankDisplay(rank)}</span>
@@ -711,17 +848,21 @@
       const trickDiv = document.getElementById('trickArea');
       trickDiv.innerHTML = '';
       
+      if (!table) return;
+      
       for (const [socketId, cards] of Object.entries(table)) {
-        const slot = document.createElement('div');
-        slot.className = 'trick-card-slot';
-        
-        cards.forEach(card => {
-          const cardEl = createCardElement(card, false);
-          cardEl.classList.add('card-small');
-          slot.appendChild(cardEl);
-        });
-        
-        trickDiv.appendChild(slot);
+        if (cards && cards.length > 0) {
+          const slot = document.createElement('div');
+          slot.className = 'trick-card-slot';
+          
+          cards.forEach(card => {
+            const cardEl = createCardElement(card, false);
+            cardEl.classList.add('card-small');
+            slot.appendChild(cardEl);
+          });
+          
+          trickDiv.appendChild(slot);
+        }
       }
     }
 
