@@ -616,6 +616,12 @@
       socket.on('room_state', (state) => {
         console.log('Room state:', state);
         gameState = state;
+        
+        // Update player names from server
+        if (state.playerNames) {
+          playerNames = { ...playerNames, ...state.playerNames };
+        }
+        
         updateGameUI(state);
       });
 
@@ -656,15 +662,21 @@
       }
       mySeat = seat;
       playerNames[socket.id] = myName;
-      socket.emit('sit', { code: myRoomCode, seat: seat });
+      socket.emit('sit', { code: myRoomCode, seat: seat, name: myName });
       showMessage(`You took the ${getSeatName(seat)} seat!`, 2000);
     }
 
     function drawCard() {
+      console.log('Draw card clicked. Seat:', mySeat, 'Room:', myRoomCode);
       if (!mySeat) {
         showMessage('Please take a seat first!', 2000);
         return;
       }
+      if (!myRoomCode) {
+        showMessage('Not in a room!', 2000);
+        return;
+      }
+      console.log('Emitting draw_card event');
       socket.emit('draw_card', { code: myRoomCode });
     }
 
@@ -679,6 +691,12 @@
     }
 
     function clearTrick() {
+      console.log('Clear trick clicked. Room:', myRoomCode);
+      if (!myRoomCode) {
+        showMessage('Not in a room!', 2000);
+        return;
+      }
+      console.log('Emitting clear_trick event');
       socket.emit('clear_trick', { code: myRoomCode });
     }
 
@@ -744,7 +762,7 @@
           }
           
           const isMe = seats[seat] === socket.id;
-          const playerName = isMe ? myName : (playerNames[seats[seat]] || getSeatName(seat));
+          const playerName = isMe ? myName : (playerNames[seats[seat]] || `Player ${seat}`);
           const team = teams[seat];
           const teamClass = team === 'Attackers' ? 'team-attackers' : 'team-defenders';
           
