@@ -2,1045 +2,191 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta
-    http-equiv="Content-Security-Policy"
-    content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.socket.io https://unpkg.com;
-      connect-src 'self' https://eight0-points-online.onrender.com wss://eight0-points-online.onrender.com;
-      style-src 'self' 'unsafe-inline';
-    "
-  />
-  <title>80 Points Online</title>
+  <title>80 Points</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
-      min-height: 100vh;
-      overflow: hidden;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #0f172a;
+      color: white;
     }
-
-    /* Lobby */
-    .lobby {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .lobby-container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      padding: 40px;
-      max-width: 520px;
-      width: 100%;
-    }
-    .lobby h1 {
-      color: #333;
-      margin-bottom: 18px;
-      font-size: 32px;
-      text-align: center;
-    }
-
-    .status-badge {
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      text-align: center;
-      font-weight: 700;
-    }
-    .status-badge.connected { background: #d4edda; color: #155724; }
-    .status-badge.disconnected { background: #f8d7da; color: #721c24; }
-
-    .lobby-section { margin: 18px 0; }
-    .lobby-section h2 { font-size: 18px; color: #555; margin-bottom: 12px; }
 
     button {
-      background: #2d5a3d;
-      color: white;
+      padding: 10px 14px;
+      margin: 4px;
+      font-size: 14px;
+      border-radius: 6px;
       border: none;
-      padding: 14px 28px;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 700;
       cursor: pointer;
-      width: 100%;
-      transition: transform 0.08s ease, background 0.3s;
-    }
-    button:hover { background: #1a472a; }
-    button:active { transform: translateY(1px); }
-    button:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #ddd;
-      border-radius: 10px;
-      font-size: 16px;
-      margin-bottom: 12px;
-    }
-    input:focus { outline: none; border-color: #2d5a3d; }
-
-    .room-code-display {
-      background: #e7f3ff;
-      padding: 16px;
-      border-radius: 10px;
-      text-align: center;
-      font-size: 24px;
-      font-weight: 900;
-      color: #004085;
-      letter-spacing: 4px;
-      margin: 12px 0;
     }
 
-    .hidden { display: none !important; }
-
-    /* Game Screen */
-    .game-screen { display: none; width: 100vw; height: 100vh; position: relative; }
-    .game-screen.active { display: block; }
-
-    .game-table {
-      width: 100%;
-      height: 100%;
-      display: grid;
-      grid-template-rows: 1fr 2fr 1fr;
-      grid-template-columns: 1fr 3fr 1fr;
-      gap: 10px;
-      padding: 20px;
-    }
-
-    .player-area {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      gap: 10px;
-    }
-    .player-area.north { grid-column: 2; grid-row: 1; }
-    .player-area.east  { grid-column: 3; grid-row: 2; }
-    .player-area.south { grid-column: 2; grid-row: 3; }
-    .player-area.west  { grid-column: 1; grid-row: 2; }
-
-    .player-info {
-      background: rgba(255, 255, 255, 0.95);
-      padding: 12px 18px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
-      text-align: center;
-      min-width: 170px;
-      position: relative;
-    }
-
-    /* Clear turn indicator: glowing yellow border + pulsing */
-    .player-info.current-turn {
-      border: 3px solid #ffd43b;
-      box-shadow: 0 0 18px rgba(255, 212, 59, 0.55);
-      animation: pulse 1.7s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 18px rgba(255, 212, 59, 0.55); }
-      50% { box-shadow: 0 0 28px rgba(255, 212, 59, 0.95); }
-    }
-
-    .player-name { font-weight: 900; color: #222; margin-bottom: 6px; font-size: 16px; }
-    .player-status { font-size: 12px; color: #666; margin-top: 4px; }
-
-    .team-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 900;
-      margin-top: 6px;
-      letter-spacing: .2px;
-    }
-    .team-attackers { background: #ff6b6b; color: white; }
-    .team-defenders { background: #4dabf7; color: white; }
-
-    .empty-seat {
-      background: rgba(255, 255, 255, 0.25);
-      border: 2px dashed rgba(255, 255, 255, 0.55);
-      box-shadow: none;
-    }
-    .seat-button {
-      margin-top: 10px;
-      padding: 10px 16px;
-      font-size: 14px;
-      width: auto;
-      border-radius: 10px;
-    }
-
-    /* Center */
-    .center-area {
-      grid-column: 2;
-      grid-row: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      gap: 14px;
-    }
-    .table-center {
-      background: rgba(45, 90, 61, 0.6);
-      border-radius: 20px;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      border: 3px solid rgba(255, 255, 255, 0.25);
-    }
-    .trick-area {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-      gap: 20px;
-      width: 320px;
-      height: 320px;
-    }
-    .trick-card-slot {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    /* Game info overlay */
-    .game-info {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 14px 16px;
-      border-radius: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      min-width: 240px;
-      z-index: 5;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 8px 0;
-      font-size: 14px;
-      gap: 12px;
-    }
-    .info-label { font-weight: 800; color: #555; }
-    .info-value { color: #222; font-weight: 700; }
-
-    /* Phase pill */
-    .phase-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 900;
-      background: rgba(45, 90, 61, 0.12);
-      color: #1a472a;
-    }
-
-    /* Cards */
-    .card-hand {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-      padding: 12px;
-      max-width: 100%;
-      overflow-x: auto;
-      min-height: 96px;
-    }
+    .primary { background: #2563eb; color: white; }
+    .secondary { background: #334155; color: white; }
+    .danger { background: #dc2626; color: white; }
 
     .card {
-      width: 60px;
-      height: 84px;
-      background: white;
-      border: 2px solid #2b2b2b;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: inline-block;
+      padding: 6px 8px;
+      margin: 4px;
+      border-radius: 6px;
+      background: #1e293b;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-      font-weight: 900;
-      font-size: 18px;
-      user-select: none;
-      position: relative;
-    }
-    .card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
-    }
-    .card.selected {
-      transform: translateY(-12px);
-      border-color: #2d5a3d;
-      border-width: 3px;
-      box-shadow: 0 10px 24px rgba(45, 90, 61, 0.45);
-    }
-    .card.red { color: #dc3545; }
-    .card.black { color: #1f1f1f; }
-
-    .card.point-card {
-      background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
     }
 
-    .card-rank { font-size: 20px; }
-    .card-suit { font-size: 24px; margin-top: 4px; }
-
-    .card-back {
-      background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
-      color: white;
-      font-size: 12px;
-      border-color: rgba(255,255,255,0.55);
-      cursor: default;
+    .selected {
+      outline: 2px solid #22c55e;
     }
 
-    .card-small { width: 45px; height: 63px; font-size: 12px; border-radius: 8px; }
-    .card-small .card-rank { font-size: 16px; }
-    .card-small .card-suit { font-size: 18px; }
-
-    /* Controls */
-    .controls {
-      position: absolute;
-      bottom: 120px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
-      z-index: 6;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .control-btn {
-      padding: 10px 18px;
-      font-size: 14px;
-      width: auto;
-      border-radius: 12px;
-      min-width: 120px;
-    }
-    .control-btn.secondary {
-      background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.35);
-    }
-    .control-btn.secondary:hover {
-      background: rgba(255,255,255,0.22);
-    }
-
-    /* Message */
-    .message-banner {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.98);
-      padding: 22px 34px;
-      border-radius: 14px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.30);
-      font-size: 16px;
-      font-weight: 800;
-      color: #222;
-      text-align: center;
-      z-index: 1000;
-      display: none;
-      max-width: 520px;
-    }
-    .message-banner.show { display: block; }
-
-    /* Mobile tweaks */
-    @media (max-width: 800px) {
-      .game-table { padding: 10px; gap: 8px; }
-      .trick-area { width: 260px; height: 260px; }
-      .game-info { min-width: 210px; }
-      .controls { bottom: 96px; }
+    h2, h3 {
+      margin-top: 20px;
     }
   </style>
 </head>
 
 <body>
-  <!-- Lobby -->
-  <div id="lobby" class="lobby">
-    <div class="lobby-container">
-      <h1>🃏 80 Points Online</h1>
 
-      <div id="statusBadge" class="status-badge disconnected">Connecting...</div>
+<h2>80 Points</h2>
 
-      <div id="lobbyContent" class="hidden">
-        <div style="margin-bottom: 16px;">
-          <label for="playerNameInput" style="display:block; margin-bottom:8px; color:#555; font-weight:800;">Your Name</label>
-          <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="20" value="Player" />
-        </div>
+<div id="lobby">
+  <button class="primary" onclick="createRoom()">Create Room</button>
+  <input id="roomCodeInput" placeholder="Room Code" />
+  <button class="secondary" onclick="joinRoom()">Join Room</button>
+</div>
 
-        <div class="lobby-section">
-          <button id="createRoomBtn" onclick="createRoom()">Create New Room</button>
-        </div>
+<hr />
 
-        <div class="lobby-section">
-          <h2>Join Existing Room</h2>
-          <input type="text" id="roomCodeInput" placeholder="Enter 6-character code" maxlength="6" />
-          <button onclick="joinRoom()">Join Room</button>
-        </div>
+<div id="game" style="display:none">
 
-        <div id="roomDisplay" class="hidden">
-          <div class="lobby-section">
-            <h2>Your Room Code</h2>
-            <div id="roomCode" class="room-code-display"></div>
-            <p style="text-align:center; color:#666; font-size:14px;">Share this code with friends!</p>
-            <button onclick="enterGame()" style="margin-top: 16px;">Enter Game Room</button>
-          </div>
-        </div>
-      </div>
-    </div>
+  <h3>Room: <span id="roomCode"></span></h3>
+
+  <div id="controls"></div>
+
+  <h3>Your Hand</h3>
+  <div id="hand"></div>
+
+  <div id="bottomEightArea" style="display:none">
+    <h3>Bottom 8 — Select 8 to discard</h3>
+    <button class="danger" onclick="discardBottomEight()">Discard Selected 8</button>
   </div>
 
-  <!-- Game -->
-  <div id="gameScreen" class="game-screen">
-    <div class="game-info">
-      <div class="info-row">
-        <span class="info-label">Room:</span>
-        <span class="info-value" id="gameRoomCode">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Players:</span>
-        <span class="info-value" id="playerCount">0/4</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Phase:</span>
-        <span class="info-value"><span id="phaseLabel" class="phase-pill">Waiting</span></span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Turn:</span>
-        <span class="info-value" id="turnLabel">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Trump:</span>
-        <span class="info-value" id="trumpSuit">Not set</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Starting:</span>
-        <span class="info-value" id="startingLabel">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Deck:</span>
-        <span class="info-value" id="deckCount">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Bottom 8:</span>
-        <span class="info-value" id="bottomEightCount">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Your hand:</span>
-        <span class="info-value" id="yourHandCount">0</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Your points:</span>
-        <span class="info-value" id="yourPoints">0</span>
-      </div>
-    </div>
+</div>
 
-    <div class="game-table">
-      <!-- North -->
-      <div class="player-area north">
-        <div id="playerNorth" class="player-info empty-seat"></div>
-        <div id="cardsNorth" class="card-hand"></div>
-      </div>
+<script>
+  const socket = io("https://YOUR-SERVER-URL-HERE"); 
+  // e.g. https://eightypoints.onrender.com
 
-      <!-- East -->
-      <div class="player-area east">
-        <div id="cardsEast" class="card-hand"></div>
-        <div id="playerEast" class="player-info empty-seat"></div>
-      </div>
+  let roomCode = null;
+  let state = null;
+  let selectedCards = new Set();
 
-      <!-- Center -->
-      <div class="center-area">
-        <div class="table-center">
-          <div class="trick-area" id="trickArea"></div>
-        </div>
+  function createRoom() {
+    socket.emit("create_room");
+  }
 
-        <div class="controls">
-          <button class="control-btn" onclick="drawCard()" id="drawBtn">Draw</button>
-          <button class="control-btn" onclick="playSelected()" id="playBtn" disabled>Play</button>
-          <button class="control-btn secondary" onclick="undoDraw()" id="undoBtn" style="display:none;">Undo</button>
-          <button class="control-btn secondary" onclick="pickupBottomEight()" id="pickupBottomBtn" style="display:none;">Pick up Bottom 8</button>
-          <button class="control-btn" onclick="discardBottomEight()" id="discardBottomBtn" style="display:none;" disabled>Discard 8</button>
-          <button class="control-btn secondary" onclick="requestReshuffle()" id="reshuffleBtn" style="display:none;">Reshuffle</button>
-          <button class="control-btn secondary" onclick="clearTrick()" id="clearBtn">Clear Trick</button>
-        </div>
-      </div>
+  function joinRoom() {
+    const code = document.getElementById("roomCodeInput").value.trim();
+    if (code) socket.emit("join_room", { code });
+  }
 
-      <!-- South (You) -->
-      <div class="player-area south">
-        <div id="cardsSouth" class="card-hand"></div>
-        <div id="playerSouth" class="player-info"></div>
-      </div>
+  socket.on("room_created", ({ code }) => {
+    roomCode = code;
+    document.getElementById("roomCode").innerText = code;
+    document.getElementById("lobby").style.display = "none";
+    document.getElementById("game").style.display = "block";
+  });
 
-      <!-- West -->
-      <div class="player-area west">
-        <div id="playerWest" class="player-info empty-seat"></div>
-        <div id="cardsWest" class="card-hand"></div>
-      </div>
-    </div>
+  socket.on("joined_room", ({ code }) => {
+    roomCode = code;
+    document.getElementById("roomCode").innerText = code;
+    document.getElementById("lobby").style.display = "none";
+    document.getElementById("game").style.display = "block";
+  });
 
-    <div id="messageBanner" class="message-banner"></div>
-  </div>
+  socket.on("room_state", (s) => {
+    state = s;
+    selectedCards.clear();
+    render();
+  });
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" crossorigin="anonymous"></script>
+  function render() {
+    renderControls();
+    renderHand();
+    renderBottomEight();
+  }
 
-  <script>
-    // ====== CONFIG ======
-    const SERVER_URL = "https://eight0-points-online.onrender.com";
+  function renderControls() {
+    const c = document.getElementById("controls");
+    c.innerHTML = "";
 
-    // ====== STATE ======
-    let socket;
-    let myRoomCode = null;
-    let mySeat = null;          // 'N' | 'E' | 'S' | 'W'
-    let myName = "Player";
-    let myHand = [];
-    let selectedCards = [];
-    let roomState = null;
-
-    // If last action was draw by me, show Undo
-    let canUndo = false;
-
-    // ====== HELPERS ======
-    const SEATS = ["N","E","S","W"];
-    const seatName = (s) => ({N:"",E:"",S:"",W:""}[s] ?? ""); // intentionally blank for UI (no N/E/S/W text)
-    const seatOrderNameForInfo = (s) => ({N:"North",E:"East",S:"South",W:"West"}[s] ?? "-"); // only for tiny info label
-    const teams = { N: "Defenders", S: "Defenders", E: "Attackers", W: "Attackers" };
-
-    function showMessage(text, duration = 2500) {
-      const banner = document.getElementById("messageBanner");
-      banner.textContent = text;
-      banner.classList.add("show");
-      clearTimeout(showMessage._t);
-      showMessage._t = setTimeout(() => banner.classList.remove("show"), duration);
+    if (state.phase === "drawing") {
+      c.innerHTML += `<button class="primary" onclick="draw()">Draw</button>`;
+      c.innerHTML += `<button class="secondary" onclick="autoDeal()">Auto Deal</button>`;
     }
 
-    function getCardDisplay(card) {
-      const { suit, jokerType } = card;
-      if (jokerType) return { symbol: "🃏", color: jokerType === "RED" ? "red" : "black" };
-      const map = {
-        S: { symbol: "♠", color: "black" },
-        H: { symbol: "♥", color: "red" },
-        D: { symbol: "♦", color: "red" },
-        C: { symbol: "♣", color: "black" },
-      };
-      return map[suit] || { symbol: "?", color: "black" };
+    if (state.phase === "awaiting_bottom_eight") {
+      c.innerHTML += `<button class="primary" onclick="pickupBottomEight()">Pick up Bottom 8</button>`;
     }
+  }
 
-    function getRankDisplay(rank) {
-      const ranks = { 14: "A", 13: "K", 12: "Q", 11: "J", 15: "JB", 16: "JR" };
-      return ranks[rank] || String(rank);
-    }
+  function renderHand() {
+    const h = document.getElementById("hand");
+    h.innerHTML = "";
 
-    // 80 Points typical point cards (commonly 5=5, 10=10, K=10). Adjust if your rules differ.
-    function cardPoints(card) {
-      if (card.jokerType) return 0;
-      if (card.rank === 5) return 5;
-      if (card.rank === 10) return 10;
-      if (card.rank === 13) return 10;
-      return 0;
-    }
-
-    function handPoints(hand) {
-      return (hand || []).reduce((sum, c) => sum + cardPoints(c), 0);
-    }
-
-    // Sorting:
-    // - Jokers grouped (one side)
-    // - Trump suit grouped
-    // - Alternate black/red suits for the rest
-    // - Royals grouped within suit (A,K,Q,J,10 then others)
-    function sortHand(hand, trumpSuit) {
-      const isRoyal = (r) => r === 14 || r === 13 || r === 12 || r === 11 || r === 10 || r === 15 || r === 16;
-
-      // Alternating suit order: black, red, black, red (choose one)
-      // We'll do: Spades (black), Hearts (red), Clubs (black), Diamonds (red)
-      const altSuitOrder = ["S","H","C","D"];
-
-      function suitKey(suit) {
-        if (!suit) return 999;
-        // trump suit comes right after jokers
-        if (trumpSuit && suit === trumpSuit) return 0;
-        const idx = altSuitOrder.indexOf(suit);
-        return 10 + (idx === -1 ? 99 : idx);
-      }
-
-      function rankKey(card) {
-        // Royals first within their bucket (desc), then others asc
-        if (card.jokerType) return -1000 + (card.rank || 0);
-        if (isRoyal(card.rank)) return -200 + (100 - card.rank); // A(14) before K(13)...
-        return 1000 + card.rank; // low to high for non-royals
-      }
-
-      return [...hand].sort((a,b) => {
-        // Jokers first (one side)
-        const aj = !!a.jokerType, bj = !!b.jokerType;
-        if (aj !== bj) return aj ? -1 : 1;
-
-        // Suit grouping (trump then alternating)
-        const sk = suitKey(a.suit) - suitKey(b.suit);
-        if (sk !== 0) return sk;
-
-        // Royals grouping
-        const rk = rankKey(a) - rankKey(b);
-        if (rk !== 0) return rk;
-
-        return String(a.id).localeCompare(String(b.id));
-      });
-    }
-
-    function createCardElement(card, clickable = false) {
+    state.yourHand.forEach(card => {
       const div = document.createElement("div");
       div.className = "card";
+      if (selectedCards.has(card.id)) div.classList.add("selected");
 
-      const { symbol, color } = getCardDisplay(card);
-      div.classList.add(color);
-
-      // highlight point cards
-      if (!card.jokerType && (card.rank === 5 || card.rank === 10 || card.rank === 13)) {
-        div.classList.add("point-card");
-      }
-
-      div.innerHTML = `
-        <span class="card-rank">${getRankDisplay(card.rank)}</span>
-        <span class="card-suit">${symbol}</span>
-      `;
-
-      if (clickable) {
-        div.onclick = () => toggleCardSelection(card.id, div);
-      } else {
-        div.style.cursor = "default";
-      }
-      return div;
-    }
-
-    function toggleCardSelection(cardId, element) {
-      // During discarding bottom eight, we enforce exactly 8 selections
-      const phase = roomState?.phase;
-
-      const idx = selectedCards.indexOf(cardId);
-      if (idx >= 0) {
-        selectedCards.splice(idx, 1);
-        element.classList.remove("selected");
-      } else {
-        // if discarding bottom eight, cap at 8
-        if (phase === "discarding_bottom_eight" && selectedCards.length >= 8) {
-          showMessage("Select exactly 8 cards to discard.");
-          return;
-        }
-        selectedCards.push(cardId);
-        element.classList.add("selected");
-      }
-
-      // enable play button only in playing phase
-      const playBtn = document.getElementById("playBtn");
-      if (phase === "playing") {
-        playBtn.disabled = selectedCards.length === 0;
-      } else {
-        playBtn.disabled = true;
-      }
-
-      // enable discard button only if exactly 8 in discarding phase
-      const discardBtn = document.getElementById("discardBottomBtn");
-      if (phase === "discarding_bottom_eight") {
-        discardBtn.disabled = selectedCards.length !== 8;
-      } else {
-        discardBtn.disabled = true;
-      }
-    }
-
-    // ====== SOCKET INIT ======
-    window.addEventListener("load", () => {
-      socket = io(SERVER_URL, {
-        transports: ["websocket", "polling"],
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 10,
-        timeout: 15000
-      });
-
-      socket.on("connect", () => {
-        document.getElementById("statusBadge").className = "status-badge connected";
-        document.getElementById("statusBadge").textContent = "Connected ✅";
-        document.getElementById("lobbyContent").classList.remove("hidden");
-      });
-
-      socket.on("disconnect", () => {
-        document.getElementById("statusBadge").className = "status-badge disconnected";
-        document.getElementById("statusBadge").textContent = "Disconnected ❌";
-      });
-
-      socket.on("room_created", ({ code }) => {
-        myRoomCode = code;
-        document.getElementById("roomCode").textContent = code;
-        document.getElementById("roomDisplay").classList.remove("hidden");
-        // auto-join already happens server-side; we just show code
-      });
-
-      socket.on("joined_room", ({ code }) => {
-        myRoomCode = code;
-      });
-
-      socket.on("room_state", (state) => {
-        roomState = state;
-
-        // Set seat if we are sitting in one
-        mySeat = findMySeat(state.seats);
-
-        // update undo availability: only show if lastAction is draw by my seat
-        canUndo = !!(state.lastAction && state.lastAction.type === "draw" && state.lastAction.seat === mySeat);
-
-        updateGameUI(state);
-
-        // If server is in awaiting_bottom_eight and we are starting player, prompt pickup
-        // (Requires the one-line server phase change described earlier.)
-        if (state.phase === "awaiting_bottom_eight" && state.startingPlayer === mySeat) {
-          document.getElementById("pickupBottomBtn").style.display = "inline-block";
-        } else {
-          document.getElementById("pickupBottomBtn").style.display = "none";
-        }
-
-        // If we are discarding bottom eight, show discard button
-        if (state.phase === "discarding_bottom_eight" && state.startingPlayer === mySeat) {
-          document.getElementById("discardBottomBtn").style.display = "inline-block";
-        } else {
-          document.getElementById("discardBottomBtn").style.display = "none";
-        }
-
-        // Undo button appears after drawing (server enforces)
-        document.getElementById("undoBtn").style.display = canUndo ? "inline-block" : "none";
-      });
-
-      socket.on("error_msg", (data) => {
-        showMessage(data.message || "Error", 2600);
-      });
+      div.innerText = cardLabel(card);
+      div.onclick = () => toggle(card.id);
+      h.appendChild(div);
     });
+  }
 
-    function findMySeat(seats) {
-      for (const [seat, sid] of Object.entries(seats || {})) {
-        if (sid === socket.id) return seat;
-      }
-      return null;
+  function renderBottomEight() {
+    const area = document.getElementById("bottomEightArea");
+    area.style.display = state.phase === "discarding_bottom_eight" ? "block" : "none";
+  }
+
+  function toggle(id) {
+    selectedCards.has(id) ? selectedCards.delete(id) : selectedCards.add(id);
+    renderHand();
+  }
+
+  function draw() {
+    socket.emit("draw_card", { code: roomCode });
+  }
+
+  function autoDeal() {
+    socket.emit("auto_deal", { code: roomCode });
+  }
+
+  function pickupBottomEight() {
+    socket.emit("start_bottom_eight", { code: roomCode });
+  }
+
+  function discardBottomEight() {
+    if (selectedCards.size !== 8) {
+      alert("Select exactly 8 cards.");
+      return;
     }
+    socket.emit("discard_bottom_eight", {
+      code: roomCode,
+      cardIds: [...selectedCards]
+    });
+  }
 
-    // ====== LOBBY ACTIONS ======
-    function createRoom() {
-      myName = (document.getElementById("playerNameInput").value || "").trim() || "Player";
-      socket.emit("create_room");
-      showMessage("Room created. Share the code, then enter the game.");
-    }
+  function cardLabel(c) {
+    if (c.jokerType) return c.jokerType === "RED" ? "🟥 Joker" : "⬛ Joker";
+    const ranks = {11:"J",12:"Q",13:"K",14:"A"};
+    return (ranks[c.rank] || c.rank) + c.suit;
+  }
+</script>
 
-    function joinRoom() {
-      myName = (document.getElementById("playerNameInput").value || "").trim() || "Player";
-      const code = (document.getElementById("roomCodeInput").value || "").trim().toUpperCase();
-      if (code.length !== 6) return showMessage("Please enter a 6-character code", 2000);
-      myRoomCode = code;
-      socket.emit("join_room", { code });
-      document.getElementById("roomCode").textContent = code;
-      document.getElementById("roomDisplay").classList.remove("hidden");
-      showMessage("Joined. Enter the game room.");
-    }
-
-    function enterGame() {
-      if (!myRoomCode) return showMessage("No room code yet.", 2000);
-      document.getElementById("lobby").style.display = "none";
-      document.getElementById("gameScreen").classList.add("active");
-      document.getElementById("gameRoomCode").textContent = myRoomCode;
-      updateYouPanel();
-    }
-
-    // ====== IN-GAME ACTIONS ======
-    function takeSeat(seat) {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      myName = myName || "Player";
-      socket.emit("sit", { code: myRoomCode, seat, name: myName });
-    }
-
-    function drawCard() {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      if (!mySeat) return showMessage("Take a seat first.", 2000);
-
-      // Server enforces turn order + 25 limit + drawing phase
-      socket.emit("draw_card", { code: myRoomCode });
-    }
-
-    function undoDraw() {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      socket.emit("undo_draw", { code: myRoomCode });
-    }
-
-    function playSelected() {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      if (!mySeat) return showMessage("Take a seat first.", 2000);
-      if (!roomState || roomState.phase !== "playing") return showMessage("Not in playing phase.", 2000);
-      if (selectedCards.length === 0) return showMessage("Select cards to play.", 2000);
-
-      socket.emit("play_cards", { code: myRoomCode, cardIds: selectedCards });
-      selectedCards = [];
-      document.getElementById("playBtn").disabled = true;
-    }
-
-    function clearTrick() {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      socket.emit("clear_trick", { code: myRoomCode });
-    }
-
-    function pickupBottomEight() {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      if (!roomState || roomState.startingPlayer !== mySeat) return showMessage("Only starting player can pick up.", 2200);
-      socket.emit("start_bottom_eight", { code: myRoomCode });
-      showMessage("Picked up bottom 8. Now discard 8 cards.");
-    }
-
-    function discardBottomEight() {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      if (!roomState || roomState.phase !== "discarding_bottom_eight") return showMessage("Not discarding right now.", 2000);
-      if (selectedCards.length !== 8) return showMessage("Select exactly 8 cards to discard.", 2200);
-
-      socket.emit("discard_bottom_eight", { code: myRoomCode, cardIds: selectedCards });
-      selectedCards = [];
-      document.getElementById("discardBottomBtn").disabled = true;
-      showMessage("Bottom 8 set. Playing begins.");
-    }
-
-    // NOTE: This requires a server handler (not in your current index.js).
-    // Keep it in UI as requested; if server doesn't support it, you'll get "unknown event" silently.
-    function requestReshuffle() {
-      if (!myRoomCode) return showMessage("Not in a room.", 2000);
-      socket.emit("request_reshuffle", { code: myRoomCode });
-      showMessage("Reshuffle requested (server must support this).", 2400);
-    }
-
-    // ====== UI RENDER ======
-    function updateGameUI(state) {
-      // Top info
-      const seated = Object.values(state.seats || {}).filter(Boolean).length;
-      document.getElementById("playerCount").textContent = `${seated}/4`;
-      document.getElementById("deckCount").textContent = String(state.deckCount ?? "-");
-      document.getElementById("bottomEightCount").textContent = String((state.bottomEight || []).length ?? "-");
-
-      document.getElementById("trumpSuit").textContent = state.trumpSuit ? suitName(state.trumpSuit) : "Not set";
-      document.getElementById("phaseLabel").textContent = phaseNice(state.phase);
-      document.getElementById("turnLabel").textContent = state.currentTurn ? seatOrderNameForInfo(state.currentTurn) : "-";
-      document.getElementById("startingLabel").textContent = state.startingPlayer ? seatOrderNameForInfo(state.startingPlayer) : "-";
-
-      // Your hand
-      myHand = sortHand(state.yourHand || [], state.trumpSuit);
-      renderMyHand();
-      document.getElementById("yourHandCount").textContent = String(myHand.length);
-      document.getElementById("yourPoints").textContent = String(handPoints(myHand));
-
-      // Seats (names + turn glow)
-      renderSeats(state);
-
-      // Other players' card backs
-      renderOtherHands(state);
-
-      // Trick/table
-      renderTrickArea(state.table);
-
-      // Controls visibility/enabled by phase/turn
-      applyControlRules(state);
-
-      // Reshuffle button (requested): show AFTER starting player has picked up bottom 8 (we treat discarding phase as “picked up”)
-      // and ONLY if your points < 25 and you are starting player.
-      const reshuffleBtn = document.getElementById("reshuffleBtn");
-      if (state.phase === "discarding_bottom_eight" && state.startingPlayer === mySeat && handPoints(myHand) < 25) {
-        reshuffleBtn.style.display = "inline-block";
-      } else {
-        reshuffleBtn.style.display = "none";
-      }
-
-      updateYouPanel();
-    }
-
-    function applyControlRules(state) {
-      const drawBtn = document.getElementById("drawBtn");
-      const playBtn = document.getElementById("playBtn");
-      const clearBtn = document.getElementById("clearBtn");
-
-      const phase = state.phase;
-      const isMyTurn = !!(mySeat && state.currentTurn === mySeat);
-
-      // Drawing allowed only in drawing phase and on your turn
-      drawBtn.disabled = !(phase === "drawing" && isMyTurn);
-
-      // Playing allowed only in playing phase and on your turn (enabled if you select cards)
-      if (phase === "playing" && isMyTurn) {
-        playBtn.disabled = selectedCards.length === 0;
-      } else {
-        playBtn.disabled = true;
-      }
-
-      // Clear trick always available (server does not restrict)
-      clearBtn.disabled = false;
-
-      // Bottom 8 buttons are toggled in room_state handler (based on phase)
-      // Discard button enabled only if exactly 8 selected
-      const discardBtn = document.getElementById("discardBottomBtn");
-      if (phase === "discarding_bottom_eight" && state.startingPlayer === mySeat) {
-        discardBtn.disabled = selectedCards.length !== 8;
-      } else {
-        discardBtn.disabled = true;
-      }
-    }
-
-    function renderSeats(state) {
-      const seats = state.seats || {};
-      const names = state.playerNames || {};
-
-      for (const seat of SEATS) {
-        const div = document.getElementById("player" + seatLong(seat));
-        const sid = seats[seat];
-
-        const isMe = sid === socket.id;
-        const displayName = sid ? (isMe ? myName : (names[sid] || "Player")) : null;
-
-        div.className = "player-info";
-        if (!sid) div.classList.add("empty-seat");
-
-        // current turn glow
-        if (sid && state.currentTurn === seat) div.classList.add("current-turn");
-
-        if (!sid) {
-          div.innerHTML = `
-            <div class="player-name">Empty</div>
-            <div class="player-status">Click to sit</div>
-            <button class="seat-button" onclick="takeSeat('${seat}')">Sit</button>
-          `;
-          continue;
-        }
-
-        const team = teams[seat];
-        const teamClass = team === "Attackers" ? "team-attackers" : "team-defenders";
-        const turnLine = (state.currentTurn === seat) ? `<div class="player-status" style="color:#b08900; font-weight:900;">🎯 TURN</div>` : "";
-        const startLine = (state.startingPlayer === seat) ? `<div class="player-status" style="color:#b08900; font-weight:900;">⭐ STARTING</div>` : "";
-
-        div.innerHTML = `
-          <div class="player-name">${escapeHtml(displayName)}</div>
-          <div class="team-badge ${teamClass}">${team}</div>
-          ${turnLine}
-          ${startLine}
-          ${isMe ? `<div class="player-status">(You)</div>` : ``}
-        `;
-      }
-    }
-
-    function renderOtherHands(state) {
-      const seats = state.seats || {};
-      const handCounts = state.handCounts || {};
-
-      for (const seat of SEATS) {
-        const area = document.getElementById("cards" + seatLong(seat));
-        area.innerHTML = "";
-
-        const sid = seats[seat];
-        if (!sid) continue;
-
-        // skip my own seat area; I always see my cards in South area (cardsSouth)
-        // But if I'm not actually seated South, still skip rendering backs for my seat box.
-        if (sid === socket.id) continue;
-
-        const count = handCounts[sid] ?? 0;
-
-        // show backs up to 25
-        const showCount = Math.min(count, 25);
-        for (let i = 0; i < showCount; i++) {
-          const back = document.createElement("div");
-          back.className = "card card-back card-small";
-          back.textContent = "?";
-          area.appendChild(back);
-        }
-      }
-    }
-
-    function renderMyHand() {
-      const handDiv = document.getElementById("cardsSouth");
-      handDiv.innerHTML = "";
-
-      // clear selections when hand re-renders (prevents stale selected state)
-      selectedCards = [];
-
-      for (const card of myHand) {
-        const el = createCardElement(card, true);
-        handDiv.appendChild(el);
-      }
-
-      // play button depends on phase/turn
-      document.getElementById("playBtn").disabled = true;
-    }
-
-    function renderTrickArea(table) {
-      const trickDiv = document.getElementById("trickArea");
-      trickDiv.innerHTML = "";
-
-      if (!table) return;
-
-      // Keep consistent 4 slots so layout doesn't jump
-      const entries = Object.entries(table);
-      for (const [sid, cards] of entries) {
-        if (!cards || cards.length === 0) continue;
-
-        const slot = document.createElement("div");
-        slot.className = "trick-card-slot";
-
-        for (const card of cards) {
-          const el = createCardElement(card, false);
-          el.classList.add("card-small");
-          slot.appendChild(el);
-        }
-
-        trickDiv.appendChild(slot);
-      }
-    }
-
-    function updateYouPanel() {
-      const youDiv = document.getElementById("playerSouth");
-      const seatedText = mySeat ? `Seated` : "Choose a seat";
-      const seatText = mySeat ? "" : "";
-
-      youDiv.innerHTML = `
-        <div class="player-name">${escapeHtml(myName || "Player")}</div>
-        <div class="player-status">${seatedText} ${seatText}</div>
-      `;
-    }
-
-    // ====== SMALL UTILS ======
-    function seatLong(seat) { return ({N:"North",E:"East",S:"South",W:"West"}[seat] || ""); }
-
-    function suitName(s) {
-      return ({S:"Spades ♠",H:"Hearts ♥",D:"Diamonds ♦",C:"Clubs ♣"}[s] || s);
-    }
-
-    function phaseNice(p) {
-      if (p === "drawing") return "Drawing Phase";
-      if (p === "playing") return "Playing Phase";
-      if (p === "waiting") return "Waiting";
-      if (p === "awaiting_bottom_eight") return "Bottom 8";
-      if (p === "discarding_bottom_eight") return "Discard Bottom 8";
-      return p || "—";
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-  </script>
 </body>
 </html>
