@@ -1,183 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self';
-    script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
-    connect-src 'self' https://eight0-points-online.onrender.com wss://eight0-points-online.onrender.com;
-    style-src 'self' 'unsafe-inline';" />
+             script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com https://unpkg.com;
+             connect-src 'self' https://eight0-points-online.onrender.com wss://eight0-points-online.onrender.com;
+             style-src 'self' 'unsafe-inline';">
   <title>80 Points Online</title>
 
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body{
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;
-      background:linear-gradient(135deg,#1a472a 0%,#2d5a3d 100%);
-      min-height:100vh; overflow:hidden;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+        Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
+      min-height: 100vh;
+      overflow: hidden;
     }
 
-    .lobby{ display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
-    .lobby-container{
-      background:white; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.3);
-      padding:40px; max-width:560px; width:100%;
+    /* Lobby */
+    .lobby { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+    .lobby-container {
+      background:white;
+      border-radius:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.3);
+      padding:40px;
+      max-width:520px;
+      width:100%;
     }
-    .lobby h1{ color:#333; margin-bottom:24px; font-size:32px; text-align:center; }
+    .lobby h1 { color:#333; margin-bottom:24px; font-size:32px; text-align:center; }
+    .status-badge { padding:12px; border-radius:8px; margin-bottom:20px; text-align:center; font-weight:600; }
+    .status-badge.connected { background:#d4edda; color:#155724; }
+    .status-badge.disconnected { background:#f8d7da; color:#721c24; }
 
-    .status-badge{ padding:12px; border-radius:8px; margin-bottom:20px; text-align:center; font-weight:600; }
-    .status-badge.connected{ background:#d4edda; color:#155724; }
-    .status-badge.disconnected{ background:#f8d7da; color:#721c24; }
+    .lobby-section { margin:20px 0; }
+    .lobby-section h2 { font-size:18px; color:#555; margin-bottom:12px; }
 
-    .lobby-section{ margin:20px 0; }
-    .lobby-section h2{ font-size:18px; color:#555; margin-bottom:12px; }
-
-    button{
-      background:#2d5a3d; color:white; border:none;
-      padding:14px 28px; border-radius:8px; font-size:16px; font-weight:600;
-      cursor:pointer; width:100%; transition:background 0.3s;
+    button {
+      background:#2d5a3d;
+      color:white;
+      border:none;
+      padding:14px 28px;
+      border-radius:8px;
+      font-size:16px;
+      font-weight:600;
+      cursor:pointer;
+      width:100%;
+      transition: background 0.3s;
     }
-    button:hover{ background:#1a472a; }
-    button:disabled{ background:#ccc; cursor:not-allowed; opacity:0.6; }
+    button:hover { background:#1a472a; }
+    button:disabled { background:#ccc; cursor:not-allowed; opacity:0.6; }
 
-    input, select{
-      width:100%; padding:12px; border:2px solid #ddd; border-radius:8px;
-      font-size:16px; margin-bottom:12px; background:white;
+    input, select {
+      width:100%;
+      padding:12px;
+      border:2px solid #ddd;
+      border-radius:8px;
+      font-size:16px;
+      margin-bottom:12px;
+      background: white;
     }
-    input:focus, select:focus{ outline:none; border-color:#2d5a3d; }
+    input:focus, select:focus { outline:none; border-color:#2d5a3d; }
 
-    .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-
-    .room-code-display{
-      background:#e7f3ff; padding:16px; border-radius:8px; text-align:center;
-      font-size:24px; font-weight:bold; color:#004085; letter-spacing:4px; margin:12px 0;
+    .room-code-display {
+      background:#e7f3ff;
+      padding:16px;
+      border-radius:8px;
+      text-align:center;
+      font-size:24px;
+      font-weight:bold;
+      color:#004085;
+      letter-spacing:4px;
+      margin:12px 0;
     }
 
-    .game-screen{ display:none; width:100vw; height:100vh; position:relative; }
-    .game-screen.active{ display:block; }
+    /* Game */
+    .game-screen { display:none; width:100vw; height:100vh; position:relative; }
+    .game-screen.active { display:block; }
 
-    .game-table{
-      width:100%; height:100%;
+    .game-table {
+      width:100%;
+      height:100%;
       display:grid;
-      grid-template-rows:1fr 2fr 1fr;
-      grid-template-columns:1fr 3fr 1fr;
-      gap:10px; padding:20px;
+      grid-template-rows: 1fr 2fr 1fr;
+      grid-template-columns: 1fr 3fr 1fr;
+      gap:10px;
+      padding:20px;
     }
 
-    .player-area{ display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
-    .player-area.north{ grid-column:2; grid-row:1; }
-    .player-area.east{ grid-column:3; grid-row:2; }
-    .player-area.south{ grid-column:2; grid-row:3; }
-    .player-area.west{ grid-column:1; grid-row:2; }
+    /* Player Areas */
+    .player-area { display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
+    .player-area.north { grid-column:2; grid-row:1; }
+    .player-area.east  { grid-column:3; grid-row:2; }
+    .player-area.south { grid-column:2; grid-row:3; }
+    .player-area.west  { grid-column:1; grid-row:2; }
 
-    .player-info{
-      background:rgba(255,255,255,0.95);
-      padding:12px 20px; border-radius:8px; margin:8px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.2);
-      text-align:center; min-width:160px;
-      border:3px solid transparent;
+    .player-info {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      text-align: center;
+      min-width: 150px;
+      position: relative;
     }
 
-    /* Clear turn indicator: glowing yellow border + pulsing animation */
-    .player-info.current-turn{
-      border-color:#ffd43b;
-      box-shadow:0 0 20px rgba(255,212,59,0.6);
-      animation:pulse 1.5s infinite;
+    /* Turn indicator */
+    .player-info.current-turn {
+      border: 3px solid #ffd43b;
+      box-shadow: 0 0 20px rgba(255, 212, 59, 0.6);
+      animation: pulse 2s infinite;
     }
-    @keyframes pulse{
-      0%,100%{ box-shadow:0 0 18px rgba(255,212,59,0.55); }
-      50%{ box-shadow:0 0 34px rgba(255,212,59,0.95); }
-    }
-
-    .starting-player{
-      border-color:#ffd43b;
-      box-shadow:0 0 18px rgba(255,212,59,0.45);
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 212, 59, 0.6); }
+      50% { box-shadow: 0 0 30px rgba(255, 212, 59, 0.9); }
     }
 
-    .player-name{ font-weight:bold; color:#333; margin-bottom:4px; font-size:16px; }
-    .player-status{ font-size:12px; color:#666; margin-top:4px; }
+    .player-name { font-weight: bold; color: #333; margin-bottom: 4px; font-size: 16px; }
+    .player-status { font-size: 12px; color: #666; margin-top: 4px; }
 
-    .team-badge{
-      display:inline-block; padding:4px 12px; border-radius:12px;
-      font-size:11px; font-weight:bold; margin-top:6px;
+    .team-badge {
+      display:inline-block;
+      padding:4px 12px;
+      border-radius:12px;
+      font-size:11px;
+      font-weight:bold;
+      margin-top:6px;
     }
-    .team-attackers{ background:#ff6b6b; color:white; }
-    .team-defenders{ background:#4dabf7; color:white; }
+    .team-attackers { background:#ff6b6b; color:white; }
+    .team-defenders { background:#4dabf7; color:white; }
 
-    .empty-seat{ background:rgba(255,255,255,0.3); border:2px dashed rgba(255,255,255,0.6); }
-    .seat-button{ margin-top:8px; padding:8px 16px; font-size:14px; width:auto; }
+    .starting-player { border: 3px solid #ffd43b; box-shadow: 0 0 20px rgba(255, 212, 59, 0.5); }
+    .empty-seat { background: rgba(255, 255, 255, 0.3); border: 2px dashed rgba(255, 255, 255, 0.6); }
+    .seat-button { margin-top: 8px; padding: 8px 16px; font-size: 14px; width: auto; }
 
-    .center-area{
-      grid-column:2; grid-row:2;
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
+    /* Center area */
+    .center-area {
+      grid-column:2;
+      grid-row:2;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
       position:relative;
     }
 
-    .table-center{
-      background:rgba(45,90,61,0.6);
-      border-radius:20px; width:100%; height:100%;
-      display:flex; align-items:center; justify-content:center;
-      border:3px solid rgba(255,255,255,0.3);
+    .table-center {
+      background: rgba(45, 90, 61, 0.6);
+      border-radius: 20px;
+      width: 100%;
+      height: 100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position: relative;
+      border: 3px solid rgba(255, 255, 255, 0.3);
     }
-    .trick-area{
-      display:grid;
-      grid-template-columns:repeat(2,1fr);
-      grid-template-rows:repeat(2,1fr);
-      gap:20px; width:300px; height:300px;
-    }
-    .trick-card-slot{ display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px; }
 
-    .game-info{
-      position:absolute; top:20px; left:20px;
-      background:rgba(255,255,255,0.95);
-      padding:16px; border-radius:12px;
+    .trick-area {
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap:20px;
+      width:300px;
+      height:300px;
+    }
+
+    .trick-card-slot { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px; }
+
+    /* Game Info */
+    .game-info {
+      position:absolute;
+      top:20px;
+      left:20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding:16px;
+      border-radius:12px;
       box-shadow:0 4px 12px rgba(0,0,0,0.2);
       min-width:260px;
     }
-    .info-row{ display:flex; justify-content:space-between; margin:8px 0; font-size:14px; }
-    .info-label{ font-weight:600; color:#555; }
-    .info-value{ color:#333; font-weight:600; }
+    .info-row { display:flex; justify-content:space-between; margin:8px 0; font-size:14px; }
+    .info-label { font-weight:600; color:#555; }
+    .info-value { color:#333; }
 
-    .card-hand{
-      display:flex; gap:6px; flex-wrap:wrap; justify-content:center;
-      padding:12px; max-width:100%; overflow-x:auto; min-height:100px;
+    /* Cards */
+    .card-hand {
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      justify-content:center;
+      padding:12px;
+      max-width:100%;
+      overflow-x:auto;
+      min-height:100px;
     }
-    .card{
-      width:60px; height:84px; background:white;
-      border:2px solid #333; border-radius:6px;
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;
-      font-weight:bold; font-size:18px; user-select:none;
-    }
-    .card:hover{ transform:translateY(-8px); box-shadow:0 8px 16px rgba(0,0,0,0.3); }
-    .card.selected{ transform:translateY(-12px); border-color:#2d5a3d; border-width:3px; box-shadow:0 8px 20px rgba(45,90,61,0.5); }
-    .card.red{ color:#dc3545; }
-    .card.black{ color:#333; }
-    .card.point-card{ background:linear-gradient(135deg,#fff9c4 0%,#fff59d 100%); }
-    .card-rank{ font-size:20px; }
-    .card-suit{ font-size:24px; margin-top:4px; }
-    .card-back{ background:linear-gradient(135deg,#1a472a 0%,#2d5a3d 100%); color:white; font-size:12px; }
-    .card-small{ width:45px; height:63px; font-size:12px; }
-    .card-small .card-rank{ font-size:16px; }
-    .card-small .card-suit{ font-size:18px; }
 
-    .controls{
-      position:absolute; bottom:120px; left:50%; transform:translateX(-50%);
-      display:flex; gap:12px; flex-wrap:wrap; justify-content:center;
+    .card {
+      width:60px;
+      height:84px;
+      background:white;
+      border:2px solid #333;
+      border-radius:6px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-weight:bold;
+      font-size:18px;
+      user-select:none;
     }
-    .control-btn{ padding:10px 24px; font-size:14px; width:auto; }
+    .card:hover { transform: translateY(-8px); box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
+    .card.selected { transform: translateY(-12px); border-color:#2d5a3d; border-width:3px; box-shadow: 0 8px 20px rgba(45,90,61,0.5); }
+    .card.red { color:#dc3545; }
+    .card.black { color:#333; }
+    .card.point-card { background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%); }
+    .card-rank { font-size:20px; }
+    .card-suit { font-size:24px; margin-top:4px; }
+    .card-back { background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%); color:white; font-size:12px; cursor: default; }
+    .card-small { width:45px; height:63px; font-size:12px; }
+    .card-small .card-rank { font-size:16px; }
+    .card-small .card-suit { font-size:18px; }
 
-    .message-banner{
-      position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
-      background:rgba(255,255,255,0.98);
-      padding:24px 48px; border-radius:12px;
-      box-shadow:0 8px 32px rgba(0,0,0,0.3);
-      font-size:18px; font-weight:600; color:#333;
-      text-align:center; z-index:1000; display:none;
+    /* Controls */
+    .controls {
+      position:absolute;
+      bottom:120px;
+      left:50%;
+      transform: translateX(-50%);
+      display:flex;
+      gap:12px;
+      align-items:center;
     }
-    .message-banner.show{ display:block; }
-    .hidden{ display:none !important; }
+    .control-btn { padding:10px 24px; font-size:14px; width:auto; }
+    .control-btn.secondary { background:#34495e; }
+    .control-btn.secondary:hover { background:#2c3e50; }
+
+    /* Message Banner */
+    .message-banner {
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.98);
+      padding: 24px 48px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      font-size:18px;
+      font-weight:600;
+      color:#333;
+      text-align:center;
+      z-index:1000;
+      display:none;
+    }
+    .message-banner.show { display:block; }
+
+    .hidden { display:none !important; }
   </style>
 </head>
 
@@ -190,36 +273,33 @@
       <div id="statusBadge" class="status-badge disconnected">Connecting...</div>
 
       <div id="lobbyContent" class="hidden">
-        <div class="lobby-section">
-          <label for="playerNameInput" style="display:block;margin-bottom:8px;color:#555;font-weight:600;">Your Name</label>
-          <input id="playerNameInput" type="text" maxlength="20" value="Player" />
-        </div>
+        <label for="playerNameInput" style="display:block;margin-bottom:8px;color:#555;font-weight:600;">Your Name</label>
+        <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="20" value="Player">
 
-        <!-- Create: choose seat + auto-join -->
         <div class="lobby-section">
           <h2>Create New Room</h2>
-          <div class="two-col">
-            <select id="createSeatSelect">
-              <option value="S">Choose South</option>
-              <option value="N">Choose North</option>
-              <option value="E">Choose East</option>
-              <option value="W">Choose West</option>
-            </select>
-            <button id="createRoomBtn" onclick="createRoom()">Create</button>
-          </div>
+          <select id="createSeatSelect">
+            <option value="">(Optional) Pick a seat now</option>
+            <option value="N">North</option>
+            <option value="E">East</option>
+            <option value="S">South</option>
+            <option value="W">West</option>
+          </select>
+          <button id="createRoomBtn" onclick="createRoom()">Create</button>
         </div>
 
         <div class="lobby-section">
           <h2>Join Existing Room</h2>
-          <input id="roomCodeInput" type="text" placeholder="Enter 6-character code" maxlength="6" />
+          <input type="text" id="roomCodeInput" placeholder="Enter 6-character code" maxlength="6">
           <button onclick="joinRoom()">Join</button>
         </div>
 
         <div id="roomDisplay" class="hidden">
           <div class="lobby-section">
-            <h2>Room Code</h2>
+            <h2>Your Room Code</h2>
             <div id="roomCode" class="room-code-display"></div>
             <p style="text-align:center;color:#666;font-size:14px;">Share this code with friends!</p>
+            <button onclick="enterGame()" style="margin-top:16px;">Enter Game Room</button>
           </div>
         </div>
       </div>
@@ -231,26 +311,34 @@
     <div class="game-info">
       <div class="info-row"><span class="info-label">Room:</span><span class="info-value" id="gameRoomCode">-</span></div>
       <div class="info-row"><span class="info-label">Players:</span><span class="info-value" id="playerCount">0/4</span></div>
-      <div class="info-row"><span class="info-label">Phase:</span><span class="info-value" id="phase">Waiting</span></div>
-      <div class="info-row"><span class="info-label">Turn:</span><span class="info-value" id="turnSeat">-</span></div>
+      <div class="info-row"><span class="info-label">Phase:</span><span class="info-value" id="phaseLabel">Waiting</span></div>
+      <div class="info-row"><span class="info-label">Turn:</span><span class="info-value" id="turnLabel">-</span></div>
       <div class="info-row"><span class="info-label">Trump:</span><span class="info-value" id="trumpSuit">Not set</span></div>
-      <div class="info-row"><span class="info-label">Starting:</span><span class="info-value" id="startingPlayer">-</span></div>
-      <div class="info-row"><span class="info-label">Deck:</span><span class="info-value" id="deckCount">-</span></div>
-      <div class="info-row"><span class="info-label">Bottom 8:</span><span class="info-value" id="bottomEightCount">-</span></div>
-      <div class="info-row"><span class="info-label">Your hand:</span><span class="info-value" id="myHandCount">0/25</span></div>
+      <div class="info-row"><span class="info-label">Starting:</span><span class="info-value" id="startingLabel">-</span></div>
+      <div class="info-row"><span class="info-label">Deck:</span><span class="info-value" id="deckCount">0</span></div>
+      <div class="info-row"><span class="info-label">Bottom 8:</span><span class="info-value" id="bottomEightCount">0</span></div>
+      <div class="info-row"><span class="info-label">Your hand:</span><span class="info-value" id="yourHandCount">0</span></div>
     </div>
 
     <div class="game-table">
       <!-- North -->
       <div class="player-area north">
-        <div id="playerNorth" class="player-info empty-seat"></div>
+        <div id="playerNorth" class="player-info empty-seat">
+          <div class="player-name">North Seat</div>
+          <div class="player-status">Empty</div>
+          <button class="seat-button" onclick="takeSeat('N')">Sit Here</button>
+        </div>
         <div id="cardsNorth" class="card-hand"></div>
       </div>
 
       <!-- East -->
       <div class="player-area east">
         <div id="cardsEast" class="card-hand"></div>
-        <div id="playerEast" class="player-info empty-seat"></div>
+        <div id="playerEast" class="player-info empty-seat">
+          <div class="player-name">East Seat</div>
+          <div class="player-status">Empty</div>
+          <button class="seat-button" onclick="takeSeat('E')">Sit Here</button>
+        </div>
       </div>
 
       <!-- Center -->
@@ -260,27 +348,29 @@
         </div>
 
         <div class="controls">
-          <button class="control-btn" id="drawBtn" onclick="drawCard()">Draw</button>
-          <button class="control-btn hidden" id="undoBtn" onclick="undoDraw()">Undo</button>
-
-          <!-- Bottom 8 flow -->
-          <button class="control-btn hidden" id="takeBottomEightBtn" onclick="takeBottomEight()">Take Bottom 8</button>
-          <button class="control-btn hidden" id="discardBottomEightBtn" onclick="discardBottomEight()">Discard 8</button>
-
-          <button class="control-btn" id="playBtn" onclick="playSelected()" disabled>Play</button>
-          <button class="control-btn" id="clearBtn" onclick="clearTrick()">Clear Trick</button>
+          <button class="control-btn" onclick="drawCard()" id="drawBtn">Draw</button>
+          <button class="control-btn secondary hidden" onclick="undoDraw()" id="undoBtn">Undo</button>
+          <button class="control-btn" onclick="playSelected()" id="playBtn" disabled>Play</button>
+          <button class="control-btn" onclick="clearTrick()" id="clearBtn">Clear Trick</button>
         </div>
       </div>
 
-      <!-- South (you) -->
+      <!-- South -->
       <div class="player-area south">
         <div id="cardsSouth" class="card-hand"></div>
-        <div id="playerSouth" class="player-info"></div>
+        <div id="playerSouth" class="player-info">
+          <div class="player-name">You</div>
+          <div class="player-status">Choose a seat</div>
+        </div>
       </div>
 
       <!-- West -->
       <div class="player-area west">
-        <div id="playerWest" class="player-info empty-seat"></div>
+        <div id="playerWest" class="player-info empty-seat">
+          <div class="player-name">West Seat</div>
+          <div class="player-status">Empty</div>
+          <button class="seat-button" onclick="takeSeat('W')">Sit Here</button>
+        </div>
         <div id="cardsWest" class="card-hand"></div>
       </div>
     </div>
@@ -292,19 +382,14 @@
 
   <script>
     let socket;
-
     let myRoomCode = null;
+    let mySeat = null;
     let myName = "Player";
-    let mySeat = null;         // derived from room.seats
     let myHand = [];
     let selectedCards = [];
     let gameState = null;
 
-    // Helpers
-    const SEATS = ["N","E","S","W"];
-    const teams = { N:"Defenders", S:"Defenders", E:"Attackers", W:"Attackers" };
-
-    window.addEventListener("load", () => {
+    window.addEventListener('load', function() {
       socket = io("https://eight0-points-online.onrender.com", {
         transports: ["websocket", "polling"],
         reconnection: true,
@@ -313,312 +398,281 @@
         timeout: 10000
       });
 
-      socket.on("connect", () => {
-        setStatus(true);
-        document.getElementById("lobbyContent").classList.remove("hidden");
+      socket.on('connect', () => {
+        document.getElementById('statusBadge').className = 'status-badge connected';
+        document.getElementById('statusBadge').textContent = 'Connected ✅';
+        document.getElementById('lobbyContent').classList.remove('hidden');
       });
 
-      socket.on("disconnect", () => setStatus(false));
-
-      socket.on("room_created", ({ code }) => {
-        myRoomCode = code;
-        document.getElementById("roomCode").textContent = code;
-        document.getElementById("roomDisplay").classList.remove("hidden");
+      socket.on('disconnect', () => {
+        document.getElementById('statusBadge').className = 'status-badge disconnected';
+        document.getElementById('statusBadge').textContent = 'Disconnected ❌';
       });
 
-      socket.on("joined_room", ({ code }) => {
-        myRoomCode = code;
-        document.getElementById("roomCode").textContent = code;
-        document.getElementById("roomDisplay").classList.remove("hidden");
+      socket.on('room_created', (data) => {
+        myRoomCode = data.code;
+        document.getElementById('roomCode').textContent = data.code;
+        document.getElementById('roomDisplay').classList.remove('hidden');
 
-        // Auto-enter game screen after join (create emits joined_room too)
-        enterGame();
-        showMessage("Joined room. Pick a seat (or wait if you already chose).", 1800);
-      });
-
-      socket.on("room_state", (state) => {
-        gameState = state;
-        // derive mySeat from seats map (server truth)
-        mySeat = null;
-        for (const [seat, sid] of Object.entries(state.seats || {})) {
-          if (sid === socket.id) mySeat = seat;
+        // Optional: auto enter game + sit after create if seat chosen
+        const seat = document.getElementById('createSeatSelect').value;
+        if (seat) {
+          setTimeout(() => {
+            enterGame();
+            takeSeat(seat);
+          }, 200);
         }
-        if (state.yourHand) myHand = sortHand(state.yourHand);
-        updateUI(state);
       });
 
-      socket.on("error_msg", ({ message }) => showMessage(message, 2600));
+      socket.on('joined_room', (data) => {
+        myRoomCode = data.code;
+      });
+
+      socket.on('room_state', (state) => {
+        gameState = state;
+        mySeat = getMySeatFromState(state);
+        updateGameUI(state);
+      });
+
+      socket.on('error_msg', (data) => {
+        showMessage(data.message, 2500);
+      });
     });
 
-    function setStatus(connected) {
-      const el = document.getElementById("statusBadge");
-      el.className = "status-badge " + (connected ? "connected" : "disconnected");
-      el.textContent = connected ? "Connected ✅" : "Disconnected ❌";
-    }
-
-    // Lobby actions
     function createRoom() {
-      myName = (document.getElementById("playerNameInput").value.trim() || "Player");
-      socket.emit("create_room");
-      // we'll sit after we receive joined_room & room_state so we know code
-      // but we CAN immediately try once myRoomCode is set; simplest: wait for state then sit via a short timer
-      const desiredSeat = document.getElementById("createSeatSelect").value;
-      const trySit = () => {
-        if (!myRoomCode) return setTimeout(trySit, 150);
-        socket.emit("sit", { code: myRoomCode, seat: desiredSeat, name: myName });
-      };
-      trySit();
+      myName = document.getElementById('playerNameInput').value.trim() || "Player";
+      socket.emit('create_room');
     }
 
     function joinRoom() {
-      const code = document.getElementById("roomCodeInput").value.trim().toUpperCase();
-      myName = (document.getElementById("playerNameInput").value.trim() || "Player");
-      if (code.length !== 6) return showMessage("Please enter a 6-character code", 2000);
-      socket.emit("join_room", { code });
+      const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+      myName = document.getElementById('playerNameInput').value.trim() || "Player";
+
+      if (code.length === 6) {
+        socket.emit('join_room', { code });
+        myRoomCode = code;
+        document.getElementById('roomCode').textContent = code;
+        document.getElementById('roomDisplay').classList.remove('hidden');
+      } else {
+        showMessage('Please enter a 6-character code', 2000);
+      }
     }
 
     function enterGame() {
-      document.getElementById("lobby").style.display = "none";
-      document.getElementById("gameScreen").classList.add("active");
-      document.getElementById("gameRoomCode").textContent = myRoomCode || "-";
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('gameScreen').classList.add('active');
+      document.getElementById('gameRoomCode').textContent = myRoomCode || '-';
     }
 
     function takeSeat(seat) {
-      if (!myRoomCode) return showMessage("Not in a room.", 1800);
-      socket.emit("sit", { code: myRoomCode, seat, name: myName });
+      if (!myRoomCode) return showMessage('Not in a room yet', 2000);
+      myName = document.getElementById('playerNameInput').value.trim() || myName || "Player";
+      socket.emit('sit', { code: myRoomCode, seat: seat, name: myName });
     }
 
-    // Game actions
     function drawCard() {
-      if (!myRoomCode) return;
-      socket.emit("draw_card", { code: myRoomCode });
+      if (!myRoomCode) return showMessage('Not in a room', 2000);
+      if (!mySeat) return showMessage('Sit in a seat first', 2000);
+      socket.emit('draw_card', { code: myRoomCode });
     }
 
     function undoDraw() {
       if (!myRoomCode) return;
-      socket.emit("undo_draw", { code: myRoomCode });
-    }
-
-    function takeBottomEight() {
-      if (!myRoomCode) return;
-      socket.emit("start_bottom_eight", { code: myRoomCode });
-    }
-
-    function discardBottomEight() {
-      if (!myRoomCode) return;
-
-      // must select exactly 8 cards
-      if (selectedCards.length !== 8) {
-        return showMessage("Select exactly 8 cards to discard.", 2200);
-      }
-      socket.emit("discard_bottom_eight", { code: myRoomCode, cardIds: selectedCards });
-      selectedCards = [];
-      document.getElementById("playBtn").disabled = true;
+      socket.emit('undo_draw', { code: myRoomCode });
     }
 
     function playSelected() {
-      if (!myRoomCode) return;
-      if (selectedCards.length === 0) return showMessage("Select cards first.", 1500);
-      socket.emit("play_cards", { code: myRoomCode, cardIds: selectedCards });
+      if (selectedCards.length === 0) return showMessage('Select cards first!', 2000);
+      socket.emit('play_cards', { code: myRoomCode, cardIds: selectedCards });
       selectedCards = [];
-      document.getElementById("playBtn").disabled = true;
+      document.getElementById('playBtn').disabled = true;
     }
 
     function clearTrick() {
-      if (!myRoomCode) return;
-      socket.emit("clear_trick", { code: myRoomCode });
+      if (!myRoomCode) return showMessage('Not in a room!', 2000);
+      socket.emit('clear_trick', { code: myRoomCode });
     }
 
-    // UI update
-    function updateUI(state) {
-      const filled = Object.values(state.seats || {}).filter(Boolean).length;
-      document.getElementById("playerCount").textContent = `${filled}/4`;
-      document.getElementById("deckCount").textContent = state.deckCount ?? "-";
-      document.getElementById("bottomEightCount").textContent = Array.isArray(state.bottomEight) ? state.bottomEight.length : "-";
-      document.getElementById("myHandCount").textContent = `${(state.yourHand || []).length}/25`;
+    function updateGameUI(state) {
+      const playerCount = Object.values(state.seats || {}).filter(Boolean).length;
 
-      document.getElementById("phase").textContent = phaseLabel(state.phase);
-      document.getElementById("turnSeat").textContent = state.currentTurn ? seatName(state.currentTurn) : "-";
-      document.getElementById("trumpSuit").textContent = state.trumpSuit ? suitName(state.trumpSuit) : "Not set";
-      document.getElementById("startingPlayer").textContent = state.startingPlayer ? seatName(state.startingPlayer) : "-";
+      document.getElementById('playerCount').textContent = `${playerCount}/4`;
+      document.getElementById('deckCount').textContent = state.deckCount ?? 0;
+      document.getElementById('bottomEightCount').textContent = (state.bottomEight ? state.bottomEight.length : 0);
+      document.getElementById('yourHandCount').textContent = (state.yourHand ? state.yourHand.length : 0);
 
-      renderSeats(state);
-      renderHands(state);
+      document.getElementById('phaseLabel').textContent = prettyPhase(state.phase);
+      document.getElementById('turnLabel').textContent = state.currentTurn ? seatLabel(state.currentTurn) : '-';
+      document.getElementById('trumpSuit').textContent = state.trumpSuit ? suitName(state.trumpSuit) : 'Not set';
+      document.getElementById('startingLabel').textContent = state.startingPlayer ? seatLabel(state.startingPlayer) : '-';
+
+      updateSeats(state);
+
+      // your hand
+      myHand = sortHand(state.yourHand || []);
+      renderMyHandIntoMySeat();
+
+      // other players
+      updateOtherPlayerCardCounts(state);
+
+      // trick
       renderTrickArea(state.table);
 
-      updateControls(state);
-    }
+      // controls
+      const isMyTurn = mySeat && state.currentTurn === mySeat;
+      const inDrawing = state.phase === 'drawing';
+      const inPlaying = state.phase === 'playing';
 
-    function updateControls(state) {
-      const drawBtn = document.getElementById("drawBtn");
-      const undoBtn = document.getElementById("undoBtn");
-      const takeBottomBtn = document.getElementById("takeBottomEightBtn");
-      const discardBottomBtn = document.getElementById("discardBottomEightBtn");
-      const playBtn = document.getElementById("playBtn");
+      document.getElementById('drawBtn').disabled = !(inDrawing && isMyTurn);
+      document.getElementById('playBtn').disabled = !(inPlaying && isMyTurn && selectedCards.length > 0);
 
-      // DRAW enabled only during drawing + your turn + you have a seat + hand < 25
-      const canDraw =
-        state.phase === "drawing" &&
-        !!mySeat &&
-        state.currentTurn === mySeat &&
-        (state.yourHand?.length ?? 0) < 25;
-
-      drawBtn.disabled = !canDraw;
-
-      // UNDO appears if lastAction was a draw by your seat
+      const undoBtn = document.getElementById('undoBtn');
       const canUndo =
-        state.phase === "drawing" &&
         state.lastAction &&
-        state.lastAction.type === "draw" &&
-        state.lastAction.seat === mySeat;
+        state.lastAction.type === 'draw' &&
+        mySeat &&
+        state.lastAction.seat === mySeat &&
+        state.phase === 'drawing';
 
-      undoBtn.classList.toggle("hidden", !canUndo);
-
-      // Bottom 8 flow:
-      // - show "Take Bottom 8" only if starting player exists, phase is playing, and bottomEight still on table (len 8), and you are starting player
-      const bottom8Len = Array.isArray(state.bottomEight) ? state.bottomEight.length : 0;
-      const isStarting = (mySeat && state.startingPlayer === mySeat);
-
-      const canTakeBottom =
-        state.phase === "playing" &&
-        isStarting &&
-        bottom8Len === 8;
-
-      takeBottomBtn.classList.toggle("hidden", !canTakeBottom);
-
-      // discarding phase: must discard exactly 8
-      const canDiscardBottom =
-        state.phase === "discarding_bottom_eight" &&
-        isStarting;
-
-      discardBottomBtn.classList.toggle("hidden", !canDiscardBottom);
-      discardBottomBtn.disabled = !(selectedCards.length === 8);
-
-      // Play:
-      // - only playing phase
-      // - only your turn
-      const canPlay =
-        state.phase === "playing" &&
-        !!mySeat &&
-        state.currentTurn === mySeat &&
-        selectedCards.length > 0;
-
-      playBtn.disabled = !canPlay;
-
-      // IMPORTANT: during discarding_bottom_eight, "Play" should not be used; selection is for discard
-      if (state.phase === "discarding_bottom_eight") {
-        playBtn.disabled = true;
-      }
+      undoBtn.classList.toggle('hidden', !canUndo);
     }
 
-    function renderSeats(state) {
+    function updateSeats(state) {
       const seats = state.seats || {};
-      const currentTurn = state.currentTurn;
-      const starting = state.startingPlayer;
+      const playerNames = state.playerNames || {};
+      const teams = { N:'Defenders', S:'Defenders', E:'Attackers', W:'Attackers' };
 
-      for (const seat of SEATS) {
-        const div = document.getElementById("player" + seatName(seat));
+      ['N','E','S','W'].forEach(seat => {
+        const seatDiv = document.getElementById(`player${seatLabel(seat)}`);
         const sid = seats[seat];
 
-        div.classList.toggle("current-turn", !!sid && currentTurn === seat);
-        div.classList.toggle("starting-player", !!sid && starting === seat);
+        const isCurrentTurn = state.currentTurn === seat;
+        const isStarting = state.startingPlayer === seat;
+
+        seatDiv.classList.toggle('current-turn', !!sid && isCurrentTurn);
+        seatDiv.classList.toggle('starting-player', !!sid && isStarting);
 
         if (sid) {
-          div.classList.remove("empty-seat");
+          seatDiv.classList.remove('empty-seat');
 
-          const isMe = (sid === socket.id);
-          const name = isMe ? myName : (state.playerNames?.[sid] || `Player ${seat}`);
-
+          const isMe = sid === socket.id;
+          const nm = isMe ? myName : (playerNames[sid] || `Player ${seat}`);
           const team = teams[seat];
-          const teamClass = team === "Attackers" ? "team-attackers" : "team-defenders";
+          const teamClass = team === 'Attackers' ? 'team-attackers' : 'team-defenders';
 
-          div.innerHTML = `
-            <div class="player-name">${name}</div>
+          seatDiv.innerHTML = `
+            <div class="player-name">${nm}</div>
             <div class="team-badge ${teamClass}">${team}</div>
-            ${currentTurn === seat ? `<div class="player-status" style="color:#b48b00;font-weight:800;">🎯 TURN</div>` : ``}
-            ${starting === seat ? `<div class="player-status" style="color:#b48b00;font-weight:800;">⭐ Starting</div>` : ``}
-            ${isMe ? `<div class="player-status">(You — ${seatName(seat)})</div>` : ``}
+            ${isCurrentTurn ? `<div class="player-status" style="color:#ffd43b;font-weight:bold;">🎯 TURN</div>` : ``}
+            ${isStarting ? `<div class="player-status" style="color:#ffd43b;font-weight:bold;">⭐ Starting</div>` : ``}
+            ${isMe ? `<div class="player-status">(You — ${seatLabel(seat)})</div>` : ``}
           `;
         } else {
-          div.classList.add("empty-seat");
-          div.classList.remove("current-turn","starting-player");
+          seatDiv.classList.remove('starting-player', 'current-turn');
+          seatDiv.classList.add('empty-seat');
 
           const team = teams[seat];
-          const teamClass = team === "Attackers" ? "team-attackers" : "team-defenders";
+          const teamClass = team === 'Attackers' ? 'team-attackers' : 'team-defenders';
 
-          div.innerHTML = `
-            <div class="player-name">${seatName(seat)} Seat</div>
+          seatDiv.innerHTML = `
+            <div class="player-name">${seatLabel(seat)} Seat</div>
             <div class="team-badge ${teamClass}">${team}</div>
             <div class="player-status">Empty</div>
             <button class="seat-button" onclick="takeSeat('${seat}')">Sit Here</button>
           `;
         }
-      }
-
-      // South box ("you")
-      const south = document.getElementById("playerSouth");
-      south.innerHTML = `
-        <div class="player-name">${myName}</div>
-        <div class="player-status">${mySeat ? `Seated: ${seatName(mySeat)}` : "Choose a seat"}</div>
-      `;
+      });
     }
 
-    function renderHands(state) {
-      // Your hand
-      const handDiv = document.getElementById("cardsSouth");
-      handDiv.innerHTML = "";
-      myHand.forEach(card => handDiv.appendChild(createCardElement(card, true)));
+    function renderMyHandIntoMySeat() {
+      // Clear all hand areas first so the hand doesn't get stuck in South
+      ['North','East','South','West'].forEach(name => {
+        const el = document.getElementById(`cards${name}`);
+        if (el) el.innerHTML = '';
+      });
 
-      // Other players: show backs up to 25
-      for (const seat of SEATS) {
-        const area = document.getElementById("cards" + seatName(seat));
-        const sid = state.seats?.[seat];
+      if (!mySeat) return;
 
-        // skip your own seat
-        if (sid === socket.id) continue;
+      const seatName = seatLabel(mySeat);
+      const handDiv = document.getElementById(`cards${seatName}`);
+      if (!handDiv) return;
 
-        area.innerHTML = "";
-        if (sid && typeof state.handCounts?.[sid] === "number") {
-          const count = state.handCounts[sid];
-          for (let i = 0; i < Math.min(count, 25); i++) {
-            const back = document.createElement("div");
-            back.className = "card card-back card-small";
-            back.textContent = "?";
-            area.appendChild(back);
-          }
+      myHand.forEach(card => {
+        const cardEl = createCardElement(card, true);
+        handDiv.appendChild(cardEl);
+      });
+    }
+
+    function updateOtherPlayerCardCounts(state) {
+      const seats = state.seats || {};
+      const handCounts = state.handCounts || {};
+
+      ['N','E','S','W'].forEach(seat => {
+        if (mySeat === seat) return; // my own hand already rendered
+
+        const seatName = seatLabel(seat);
+        const area = document.getElementById(`cards${seatName}`);
+        if (!area) return;
+
+        area.innerHTML = '';
+
+        const sid = seats[seat];
+        if (!sid) return;
+
+        // IMPORTANT: allow 0 (don't use if(handCounts[sid]) ...)
+        const count = (handCounts[sid] ?? 0);
+
+        for (let i = 0; i < Math.min(count, 25); i++) {
+          const back = document.createElement('div');
+          back.className = 'card card-back card-small';
+          back.textContent = '?';
+          area.appendChild(back);
         }
-      }
+      });
     }
 
     function renderTrickArea(table) {
-      const trickDiv = document.getElementById("trickArea");
-      trickDiv.innerHTML = "";
+      const trickDiv = document.getElementById('trickArea');
+      trickDiv.innerHTML = '';
       if (!table) return;
 
-      for (const [sid, cards] of Object.entries(table)) {
+      for (const [socketId, cards] of Object.entries(table)) {
         if (cards && cards.length > 0) {
-          const slot = document.createElement("div");
-          slot.className = "trick-card-slot";
+          const slot = document.createElement('div');
+          slot.className = 'trick-card-slot';
+
           cards.forEach(card => {
-            const el = createCardElement(card, false);
-            el.classList.add("card-small");
-            slot.appendChild(el);
+            const cardEl = createCardElement(card, false);
+            cardEl.classList.add('card-small');
+            slot.appendChild(cardEl);
           });
+
           trickDiv.appendChild(slot);
         }
       }
     }
 
-    // Card rendering / selection
-    function createCardElement(card, clickable=false) {
-      const div = document.createElement("div");
-      div.className = "card";
+    function sortHand(hand) {
+      const suitOrder = { 'S': 1, 'H': 2, 'D': 3, 'C': 4 };
+      return hand.slice().sort((a, b) => {
+        if (!a.suit && !b.suit) return a.rank - b.rank;
+        if (!a.suit) return 1;
+        if (!b.suit) return -1;
+        const suitDiff = suitOrder[a.suit] - suitOrder[b.suit];
+        if (suitDiff !== 0) return suitDiff;
+        return a.rank - b.rank;
+      });
+    }
+
+    function createCardElement(card, clickable = false) {
+      const div = document.createElement('div');
+      div.className = 'card';
 
       const { rank, suit, jokerType } = card;
       const { symbol, color } = getCardDisplay(suit, jokerType);
       div.classList.add(color);
 
-      if (rank === 5 || rank === 10 || rank === 13) div.classList.add("point-card");
+      if (rank === 5 || rank === 10 || rank === 13) div.classList.add('point-card');
 
       div.innerHTML = `
         <span class="card-rank">${getRankDisplay(rank)}</span>
@@ -631,71 +685,67 @@
       return div;
     }
 
-    function toggleCardSelection(cardId, el) {
-      const idx = selectedCards.indexOf(cardId);
-      if (idx >= 0) {
-        selectedCards.splice(idx, 1);
-        el.classList.remove("selected");
+    function toggleCardSelection(cardId, element) {
+      const index = selectedCards.indexOf(cardId);
+      if (index > -1) {
+        selectedCards.splice(index, 1);
+        element.classList.remove('selected');
       } else {
         selectedCards.push(cardId);
-        el.classList.add("selected");
+        element.classList.add('selected');
       }
 
-      // refresh control states (especially discard 8 button)
-      if (gameState) updateControls(gameState);
+      const isMyTurn = mySeat && gameState && gameState.currentTurn === mySeat;
+      const inPlaying = gameState && gameState.phase === 'playing';
+      document.getElementById('playBtn').disabled = !(inPlaying && isMyTurn && selectedCards.length > 0);
     }
 
-    function sortHand(hand) {
-      const suitOrder = { S:1, H:2, D:3, C:4 };
-      return [...hand].sort((a,b) => {
-        if (!a.suit && !b.suit) return a.rank - b.rank;
-        if (!a.suit) return 1;
-        if (!b.suit) return -1;
-        const sd = suitOrder[a.suit] - suitOrder[b.suit];
-        if (sd !== 0) return sd;
-        return a.rank - b.rank;
-      });
-    }
-
-    // Display helpers
     function getCardDisplay(suit, jokerType) {
-      if (jokerType) return { symbol:"🃏", color: jokerType === "RED" ? "red" : "black" };
+      if (jokerType) return { symbol: '🃏', color: jokerType === 'RED' ? 'red' : 'black' };
       const suits = {
-        S: { symbol:"♠", color:"black" },
-        H: { symbol:"♥", color:"red" },
-        D: { symbol:"♦", color:"red" },
-        C: { symbol:"♣", color:"black" }
+        'S': { symbol: '♠', color: 'black' },
+        'H': { symbol: '♥', color: 'red' },
+        'D': { symbol: '♦', color: 'red' },
+        'C': { symbol: '♣', color: 'black' }
       };
-      return suits[suit] || { symbol:"?", color:"black" };
+      return suits[suit] || { symbol: '?', color: 'black' };
     }
 
     function getRankDisplay(rank) {
-      const ranks = { 14:"A", 13:"K", 12:"Q", 11:"J", 15:"JB", 16:"JR" };
+      const ranks = { 14: 'A', 13: 'K', 12: 'Q', 11: 'J', 15: 'JB', 16: 'JR' };
       return ranks[rank] || rank;
     }
 
-    function seatName(seat) {
-      return ({N:"North",E:"East",S:"South",W:"West"})[seat] || seat;
+    function seatLabel(seat) {
+      return ({ N: 'North', E: 'East', S: 'South', W: 'West' })[seat] || seat;
     }
 
-    function suitName(suit) {
-      return ({S:"Spades ♠",H:"Hearts ♥",D:"Diamonds ♦",C:"Clubs ♣"})[suit] || suit;
+    function suitName(s) {
+      return ({ S: 'Spades ♠', H: 'Hearts ♥', D: 'Diamonds ♦', C: 'Clubs ♣' })[s] || s;
     }
 
-    function phaseLabel(phase) {
-      if (phase === "waiting") return "Waiting (need 4 seated)";
-      if (phase === "drawing") return "Drawing Phase";
-      if (phase === "playing") return "Playing Phase";
-      if (phase === "discarding_bottom_eight") return "Discarding Bottom 8";
-      if (phase === "round_end") return "Round End";
-      return String(phase || "-");
+    function prettyPhase(p) {
+      if (p === 'drawing') return 'Drawing Phase';
+      if (p === 'playing') return 'Playing Phase';
+      if (p === 'discarding_bottom_eight') return 'Discarding Bottom 8';
+      if (p === 'waiting') return 'Waiting';
+      if (p === 'round_end') return 'Round End';
+      return p || 'Waiting';
     }
 
-    function showMessage(text, duration=2500) {
-      const banner = document.getElementById("messageBanner");
+    function getMySeatFromState(state) {
+      if (!state || !state.seats) return null;
+      for (const [seat, sid] of Object.entries(state.seats)) {
+        if (sid === socket.id) return seat;
+      }
+      return null;
+    }
+
+    function showMessage(text, duration = 2500) {
+      const banner = document.getElementById('messageBanner');
       banner.textContent = text;
-      banner.classList.add("show");
-      setTimeout(() => banner.classList.remove("show"), duration);
+      banner.classList.add('show');
+      setTimeout(() => banner.classList.remove('show'), duration);
     }
   </script>
 </body>
