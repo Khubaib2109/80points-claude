@@ -885,3 +885,71 @@
       if (index > -1) {
         selectedCards.splice(index, 1);
         element.classList.remove
+
+      ('selected');
+      } else {
+        selectedCards.push(cardId);
+        element.classList.add('selected');
+      }
+      document.getElementById('playBtn').disabled = selectedCards.length === 0;
+    }
+
+    function renderTrickArea(table) {
+      const trickDiv = document.getElementById('trickArea');
+      trickDiv.innerHTML = '';
+      
+      if (!table) return;
+      
+      for (const [socketId, cards] of Object.entries(table)) {
+        if (cards && cards.length > 0) {
+          const slot = document.createElement('div');
+          slot.className = 'trick-card-slot';
+          
+          cards.forEach(card => {
+            const cardEl = createCardElement(card, false);
+            cardEl.classList.add('card-small');
+            slot.appendChild(cardEl);
+          });
+          
+          trickDiv.appendChild(slot);
+        }
+      }
+    }
+
+    function getCardDisplay(suit, jokerType) {
+      if (jokerType) {
+        return { symbol: '🃏', color: jokerType === 'RED' ? 'red' : 'black' };
+      }
+      const suits = {
+        'S': { symbol: '♠', color: 'black' },
+        'H': { symbol: '♥', color: 'red' },
+        'D': { symbol: '♦', color: 'red' },
+        'C': { symbol: '♣', color: 'black' }
+      };
+      return suits[suit] || { symbol: '?', color: 'black' };
+    }
+
+    function getRankDisplay(rank) {
+      const ranks = {
+        14: 'A', 13: 'K', 12: 'Q', 11: 'J',
+        15: 'JB', 16: 'JR'
+      };
+      return ranks[rank] || rank;
+    }
+
+    function getSeatName(seat) {
+      const names = { N: 'North', E: 'East', S: 'South', W: 'West' };
+      return names[seat] || seat;
+    }
+
+    function showMessage(text, duration = 3000) {
+      const banner = document.getElementById('messageBanner');
+      banner.textContent = text;
+      banner.classList.add('show');
+      setTimeout(() => {
+        banner.classList.remove('show');
+      }, duration);
+    }
+  </script>
+</body>
+</html>
