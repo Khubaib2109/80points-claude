@@ -253,7 +253,7 @@
       width: 100%;
       height: 100%;
       display: grid;
-      grid-template-rows:    148px 1fr 160px;
+      grid-template-rows:    110px 1fr 215px;
       grid-template-columns: 170px 1fr 170px;
       gap: 6px;
       padding: 12px;
@@ -338,6 +338,31 @@
       padding: 4px 0;
     }
 
+    /* South hand: single-row fan with horizontal scroll */
+    #cardsSouth {
+      flex-wrap: nowrap;
+      gap: 0;
+      justify-content: flex-start;
+      overflow-x: auto;
+      overflow-y: visible;
+      padding: 22px 10px 14px;
+      min-height: 118px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
+    }
+    #cardsSouth .card {
+      flex-shrink: 0;
+      margin-right: -22px;
+    }
+    #cardsSouth .card:last-child { margin-right: 4px; }
+    #cardsSouth .card.clickable:hover {
+      z-index: 10;
+      transform: translateY(-14px);
+      box-shadow: 0 14px 26px rgba(0,0,0,0.38);
+    }
+    #cardsSouth .card.sel-play   { z-index: 8; transform: translateY(-18px); }
+    #cardsSouth .card.sel-discard { z-index: 8; transform: translateY(-13px); }
+
     /* ── Cards ── */
     .card {
       width: var(--card-w);
@@ -409,8 +434,8 @@
 
     /* Trick table — N/S/E/W positioned */
     .trick-table {
-      width: 260px;
-      height: 200px;
+      width: 200px;
+      height: 150px;
       display: grid;
       grid-template-columns: 1fr 1.2fr 1fr;
       grid-template-rows:    1fr 1.2fr 1fr;
@@ -681,10 +706,7 @@
   let playSelection    = [];   // cards chosen to play
   let discardSelection = [];   // cards chosen to discard (bottom-8 phase)
 
-  // auto-draw
-  let autoDrawing      = false;
-  let autoDrawTimer    = null;
-  let dealDeckSnapshot = Infinity; // deck count when drawing phase first seen
+  let autoDrawTimer = null;
 
   // ── socket setup ───────────────────────────────────────────
   window.addEventListener('load', () => {
@@ -722,31 +744,15 @@
         toast(`Dealing done! Trump: ${sym}  |  ${starter} picks up the bottom 8`, 5000);
       }
 
-      // Cascade runs BEFORE updateUI so renderActionPanel sees the correct autoDrawing flag
-      if (state.phase === 'drawing') {
-        if (!autoDrawing) {
-          // Record initial deck count the first time we enter drawing phase
-          if (typeof state.deckCount === 'number' && dealDeckSnapshot === Infinity) {
-            dealDeckSnapshot = state.deckCount;
+      // Fully automatic: every player auto-draws on their turn during dealing
+      if (state.phase === 'drawing' && isMyTurnNow(state)) {
+        clearTimeout(autoDrawTimer);
+        autoDrawTimer = setTimeout(() => {
+          if (gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
+            socket.emit('draw_card', { code: myRoomCode });
           }
-          // Cascade: deck decreased OR any player already holds cards
-          const deckDecreased = typeof state.deckCount === 'number'
-            && dealDeckSnapshot < Infinity && state.deckCount < dealDeckSnapshot;
-          const cardsDealt = Object.values(state.handCounts || {}).some(n => n > 0);
-          if (deckDecreased || cardsDealt) autoDrawing = true;
-        }
-        if (autoDrawing && isMyTurnNow(state)) {
-          clearTimeout(autoDrawTimer);
-          autoDrawTimer = setTimeout(() => {
-            if (autoDrawing && gameState?.phase === 'drawing'
-                && isMyTurnNow(gameState) && (gameState.deckCount ?? 1) > 0) {
-              socket.emit('draw_card', { code: myRoomCode });
-            }
-          }, 20);
-        }
-      } else {
-        dealDeckSnapshot = Infinity;
-        autoDrawing = false;
+        }, 30);
+      } else if (state.phase !== 'drawing') {
         clearTimeout(autoDrawTimer);
       }
 
@@ -804,19 +810,6 @@
     socket.emit('draw_card', { code: myRoomCode });
   }
 
-  function startDeal() {
-    autoDrawing = true;
-    renderActionPanel();
-    // Fire immediately if it's already our turn; otherwise the room_state handler will pick it up
-    if (gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
-      clearTimeout(autoDrawTimer);
-      autoDrawTimer = setTimeout(() => {
-        if (autoDrawing && gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
-          socket.emit('draw_card', { code: myRoomCode });
-        }
-      }, 20);
-    }
-  }
 
   function playCards() {
     if (playSelection.length === 0) return toast('Select cards to play first!');
@@ -1088,11 +1081,7 @@
     }
 
     if (phase === 'drawing') {
-      if (autoDrawing) {
-        addTxt(panel, '🃏 Dealing cards…');
-      } else {
-        addBtn(panel, '🃏 Deal All Cards', 'ab-green', startDeal);
-      }
+      addTxt(panel, '🃏 Dealing cards…');
       return;
     }
 
