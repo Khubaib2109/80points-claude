@@ -715,7 +715,6 @@
       const prevPhase = gameState?.phase;
       gameState = state;
       if (state.playerNames) Object.assign(playerNames, state.playerNames);
-      updateUI(state);
 
       if (prevPhase === 'drawing' && state.phase === 'playing') {
         const sym = state.trumpSuit ? SUITS[state.trumpSuit]?.sym : '?';
@@ -723,15 +722,18 @@
         toast(`Dealing done! Trump: ${sym}  |  ${starter} picks up the bottom 8`, 5000);
       }
 
-      // Auto-draw cascade: once any card is drawn (deck count decreases),
-      // all clients enable auto-draw so only ONE player needs to click "Deal All"
+      // Cascade runs BEFORE updateUI so renderActionPanel sees the correct autoDrawing flag
       if (state.phase === 'drawing') {
-        if (typeof state.deckCount === 'number') {
-          if (dealDeckSnapshot === Infinity) {
+        if (!autoDrawing) {
+          // Record initial deck count the first time we enter drawing phase
+          if (typeof state.deckCount === 'number' && dealDeckSnapshot === Infinity) {
             dealDeckSnapshot = state.deckCount;
-          } else if (state.deckCount < dealDeckSnapshot) {
-            autoDrawing = true;
           }
+          // Cascade: deck decreased OR any player already holds cards
+          const deckDecreased = typeof state.deckCount === 'number'
+            && dealDeckSnapshot < Infinity && state.deckCount < dealDeckSnapshot;
+          const cardsDealt = Object.values(state.handCounts || {}).some(n => n > 0);
+          if (deckDecreased || cardsDealt) autoDrawing = true;
         }
         if (autoDrawing && isMyTurnNow(state)) {
           clearTimeout(autoDrawTimer);
@@ -747,6 +749,8 @@
         autoDrawing = false;
         clearTimeout(autoDrawTimer);
       }
+
+      updateUI(state);
     });
 
     socket.on('error_msg', ({ message }) => toast(message));
@@ -1125,6 +1129,7 @@
   }
 
   function addTrumpSelector(panel, currentTrump) {
+    const royalRank = gameState?.royalNumber ?? 2;
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;align-items:center;gap:6px;';
 
@@ -1136,8 +1141,11 @@
     ['H','S','D','C'].forEach(suit => {
       const { sym, col } = SUITS[suit];
       const active = suit === currentTrump;
+      const canDeclare = myHand.some(c => !c.jokerType && c.suit === suit && c.rank === royalRank);
+      const rankLabel = RANK_LABELS[royalRank] ?? royalRank;
       const b = document.createElement('button');
       b.className = 'ab';
+      b.disabled = !canDeclare;
       b.style.cssText = [
         `background:${active ? (col==='red'?'#dc2626':'#1e293b') : 'rgba(255,255,255,0.12)'}`,
         `color:${col==='red'?'#fca5a5':'#e2e8f0'}`,
@@ -1146,7 +1154,9 @@
         `border:2px solid ${active ? (col==='red'?'#f87171':'#94a3b8') : 'rgba(255,255,255,0.2)'}`,
         active ? 'box-shadow:0 0 12px rgba(255,255,255,0.25)' : '',
       ].join(';');
-      b.title = active ? `Trump is ${sym}` : `Set trump to ${sym}`;
+      b.title = canDeclare
+        ? (active ? `Trump is ${sym}` : `Declare ${sym} as trump`)
+        : `Need ${rankLabel}${sym} to declare`;
       b.textContent = sym;
       b.onclick = () => declareTrump(suit);
       wrap.appendChild(b);
