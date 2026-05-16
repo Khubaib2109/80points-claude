@@ -313,19 +313,12 @@
     .turn-lbl { font-size: 11px; color: var(--gold); font-weight: 700; margin-top: 3px; }
     .start-lbl { font-size: 11px; color: #a855f7; font-weight: 700; margin-top: 2px; }
 
-    .seat-btn-ghost {
-      margin-top: 8px;
-      padding: 5px 12px;
-      background: rgba(255,255,255,0.18);
-      border: 1px solid rgba(255,255,255,0.4);
-      border-radius: 7px;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s;
+    .seat-empty-lbl {
+      font-size: 11px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 5px;
+      font-weight: 600;
     }
-    .seat-btn-ghost:hover { background: rgba(255,255,255,0.3); }
 
     /* ── Card hands ── */
     .hand {
@@ -604,7 +597,7 @@
       <div id="playerNorth" class="player-box empty">
         <div class="pname">North</div>
         <div><span class="team-tag td">Defenders</span></div>
-        <button class="seat-btn-ghost" onclick="takeSeat('N')">Sit Here</button>
+        <div class="seat-empty-lbl">Empty</div>
       </div>
       <div id="cardsNorth" class="hand"></div>
     </div>
@@ -615,7 +608,7 @@
       <div id="playerEast" class="player-box empty">
         <div class="pname">East</div>
         <div><span class="team-tag ta">Attackers</span></div>
-        <button class="seat-btn-ghost" onclick="takeSeat('E')">Sit Here</button>
+        <div class="seat-empty-lbl">Empty</div>
       </div>
     </div>
 
@@ -633,7 +626,7 @@
     <div class="pa south">
       <div id="playerSouth" class="player-box">
         <div class="pname">You</div>
-        <div class="you-lbl">Choose a seat</div>
+        <div class="you-lbl">Choose a team below</div>
       </div>
       <div id="cardsSouth" class="hand"></div>
     </div>
@@ -643,7 +636,7 @@
       <div id="playerWest" class="player-box empty">
         <div class="pname">West</div>
         <div><span class="team-tag ta">Attackers</span></div>
-        <button class="seat-btn-ghost" onclick="takeSeat('W')">Sit Here</button>
+        <div class="seat-empty-lbl">Empty</div>
       </div>
       <div id="cardsWest" class="hand"></div>
     </div>
@@ -766,6 +759,14 @@
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('gameScreen').classList.add('active');
     document.getElementById('gameRoomCode').textContent = myRoomCode;
+  }
+
+  function joinTeam(team) {
+    if (!gameState) return;
+    const seats = team === 'defenders' ? ['N', 'S'] : ['E', 'W'];
+    const free = seats.find(s => !gameState.seats[s]);
+    if (!free) return toast(`Both ${team} seats are taken!`);
+    takeSeat(free);
   }
 
   function takeSeat(seat) {
@@ -935,7 +936,7 @@
         box.innerHTML = `
           <div class="pname">${SEAT_NAMES[seat]}</div>
           <div><span class="team-tag ${tagClass}">${team}</span></div>
-          <button class="seat-btn-ghost" onclick="takeSeat('${seat}')">Sit Here</button>
+          <div class="seat-empty-lbl">Empty</div>
         `;
       }
     });
@@ -1045,6 +1046,15 @@
     const { phase, seats, currentTurn, startingPlayer, bottomEight, lastAction } = gameState;
     const isMyTurn  = isMyTurnNow(gameState);
     const isStarter = mySeat === startingPlayer;
+
+    // Show team join buttons whenever the player has no seat
+    if (!mySeat) {
+      const defFull = ['N','S'].every(s => seats[s]);
+      const atkFull = ['E','W'].every(s => seats[s]);
+      addBtn(panel, '🛡 Join Defenders (N/S)', 'ab-blue',  () => joinTeam('defenders'), defFull);
+      addBtn(panel, '⚔ Join Attackers (E/W)', 'ab-red',   () => joinTeam('attackers'), atkFull);
+      return;
+    }
 
     if (phase === 'waiting') {
       addTxt(panel, 'Waiting for all 4 players to sit down…');
