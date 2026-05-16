@@ -759,6 +759,7 @@
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('gameScreen').classList.add('active');
     document.getElementById('gameRoomCode').textContent = myRoomCode;
+    renderActionPanel();
   }
 
   function joinTeam(team) {
@@ -1041,20 +1042,23 @@
   function renderActionPanel() {
     const panel = document.getElementById('actionPanel');
     panel.innerHTML = '';
+
+    // Show team join buttons whenever the player has no seat,
+    // even before the first room_state arrives (gameState may be null)
+    if (!mySeat) {
+      const seats = gameState?.seats || {};
+      const defFull = ['N','S'].every(s => seats[s]);
+      const atkFull = ['E','W'].every(s => seats[s]);
+      addBtn(panel, '🛡 Join Defenders (N/S)', 'ab-blue', () => joinTeam('defenders'), defFull);
+      addBtn(panel, '⚔ Join Attackers (E/W)', 'ab-red',  () => joinTeam('attackers'), atkFull);
+      return;
+    }
+
     if (!gameState) return;
 
     const { phase, seats, currentTurn, startingPlayer, bottomEight, lastAction } = gameState;
     const isMyTurn  = isMyTurnNow(gameState);
     const isStarter = mySeat === startingPlayer;
-
-    // Show team join buttons whenever the player has no seat
-    if (!mySeat) {
-      const defFull = ['N','S'].every(s => seats[s]);
-      const atkFull = ['E','W'].every(s => seats[s]);
-      addBtn(panel, '🛡 Join Defenders (N/S)', 'ab-blue',  () => joinTeam('defenders'), defFull);
-      addBtn(panel, '⚔ Join Attackers (E/W)', 'ab-red',   () => joinTeam('attackers'), atkFull);
-      return;
-    }
 
     if (phase === 'waiting') {
       addTxt(panel, 'Waiting for all 4 players to sit down…');
