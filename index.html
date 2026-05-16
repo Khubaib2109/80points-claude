@@ -806,10 +806,16 @@
 
   function startDeal() {
     autoDrawing = true;
-    if (gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
-      socket.emit('draw_card', { code: myRoomCode });
-    }
     renderActionPanel();
+    // Fire immediately if it's already our turn; otherwise the room_state handler will pick it up
+    if (gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
+      clearTimeout(autoDrawTimer);
+      autoDrawTimer = setTimeout(() => {
+        if (autoDrawing && gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
+          socket.emit('draw_card', { code: myRoomCode });
+        }
+      }, 20);
+    }
   }
 
   function playCards() {
@@ -1084,12 +1090,9 @@
     if (phase === 'drawing') {
       if (autoDrawing) {
         addTxt(panel, '🃏 Dealing cards…');
-      } else if (isMyTurn) {
-        addBtn(panel, '🃏 Deal All Cards', 'ab-green', startDeal);
       } else {
-        addTxt(panel, `Waiting for ${name(seats[currentTurn])} to start dealing…`);
+        addBtn(panel, '🃏 Deal All Cards', 'ab-green', startDeal);
       }
-      addTrumpSelector(panel, gameState.trumpSuit);
       return;
     }
 
@@ -1102,7 +1105,6 @@
       } else {
         addTxt(panel, `Waiting for ${SEAT_NAMES[startingPlayer]} to discard 8 cards…`);
       }
-      addTrumpSelector(panel, gameState.trumpSuit);
       return;
     }
 
