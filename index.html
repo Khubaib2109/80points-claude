@@ -682,8 +682,9 @@
   let discardSelection = [];   // cards chosen to discard (bottom-8 phase)
 
   // auto-draw
-  let autoDrawing  = false;
-  let autoDrawTimer = null;
+  let autoDrawing      = false;
+  let autoDrawTimer    = null;
+  let dealDeckSnapshot = Infinity; // deck count when drawing phase first seen
 
   // ── socket setup ───────────────────────────────────────────
   window.addEventListener('load', () => {
@@ -722,18 +723,27 @@
         toast(`Dealing done! Trump: ${sym}  |  ${starter} picks up the bottom 8`, 5000);
       }
 
-      // Auto-draw: fire when it's our turn during drawing phase
-      if (autoDrawing && state.phase === 'drawing') {
-        if (isMyTurnNow(state)) {
+      // Auto-draw cascade: once any card is drawn (deck count decreases),
+      // all clients enable auto-draw so only ONE player needs to click "Deal All"
+      if (state.phase === 'drawing') {
+        if (typeof state.deckCount === 'number') {
+          if (dealDeckSnapshot === Infinity) {
+            dealDeckSnapshot = state.deckCount;
+          } else if (state.deckCount < dealDeckSnapshot) {
+            autoDrawing = true;
+          }
+        }
+        if (autoDrawing && isMyTurnNow(state)) {
           clearTimeout(autoDrawTimer);
           autoDrawTimer = setTimeout(() => {
-            if (autoDrawing && gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
+            if (autoDrawing && gameState?.phase === 'drawing'
+                && isMyTurnNow(gameState) && (gameState.deckCount ?? 1) > 0) {
               socket.emit('draw_card', { code: myRoomCode });
             }
           }, 20);
         }
-      }
-      if (state.phase !== 'drawing') {
+      } else {
+        dealDeckSnapshot = Infinity;
         autoDrawing = false;
         clearTimeout(autoDrawTimer);
       }
@@ -790,22 +800,12 @@
     socket.emit('draw_card', { code: myRoomCode });
   }
 
-  function toggleAutoDraw() {
-    autoDrawing = !autoDrawing;
-    if (autoDrawing) {
-      toast('Auto-deal ON — cards will draw automatically each turn');
-      if (gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
-        socket.emit('draw_card', { code: myRoomCode });
-      }
-    } else {
-      toast('Auto-deal paused');
-      clearTimeout(autoDrawTimer);
+  function startDeal() {
+    autoDrawing = true;
+    if (gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
+      socket.emit('draw_card', { code: myRoomCode });
     }
     renderActionPanel();
-  }
-
-  function undoDraw() {
-    socket.emit('undo_draw', { code: myRoomCode });
   }
 
   function playCards() {
@@ -1078,12 +1078,12 @@
     }
 
     if (phase === 'drawing') {
-      addBtn(panel, autoDrawing ? '⏹ Stop Auto-Deal' : '🃏 Deal All Cards', 'ab-green', toggleAutoDraw);
-      if (!autoDrawing) {
-        addBtn(panel, 'Draw 1 Card', 'ab-ghost', drawOne, !isMyTurn);
-      }
-      if (lastAction?.type === 'draw') {
-        addBtn(panel, 'Undo Last Draw', 'ab-orange', undoDraw);
+      if (autoDrawing) {
+        addTxt(panel, '🃏 Dealing cards…');
+      } else if (isMyTurn) {
+        addBtn(panel, '🃏 Deal All Cards', 'ab-green', startDeal);
+      } else {
+        addTxt(panel, `Waiting for ${name(seats[currentTurn])} to start dealing…`);
       }
       addTrumpSelector(panel, gameState.trumpSuit);
       return;
