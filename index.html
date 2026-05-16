@@ -711,9 +711,16 @@
     socket.on('joined_room', ({ code }) => { myRoomCode = code; });
 
     socket.on('room_state', (state) => {
+      const prevPhase = gameState?.phase;
       gameState = state;
       if (state.playerNames) Object.assign(playerNames, state.playerNames);
       updateUI(state);
+
+      if (prevPhase === 'drawing' && state.phase === 'playing') {
+        const sym = state.trumpSuit ? SUITS[state.trumpSuit]?.sym : '?';
+        const starter = SEAT_NAMES[state.startingPlayer] || 'Unknown';
+        toast(`Dealing done! Trump: ${sym}  |  ${starter} picks up the bottom 8`, 5000);
+      }
 
       // Auto-draw: fire when it's our turn during drawing phase
       if (autoDrawing && state.phase === 'drawing') {
@@ -723,7 +730,7 @@
             if (autoDrawing && gameState?.phase === 'drawing' && isMyTurnNow(gameState)) {
               socket.emit('draw_card', { code: myRoomCode });
             }
-          }, 90);
+          }, 20);
         }
       }
       if (state.phase !== 'drawing') {
@@ -817,6 +824,11 @@
     socket.emit('start_bottom_eight', { code: myRoomCode });
   }
 
+  function declareTrump(suit) {
+    socket.emit('declare_trump', { code: myRoomCode, suit });
+    toast(`Trump declared: ${SUITS[suit].sym}`);
+  }
+
   function confirmDiscard() {
     if (discardSelection.length !== 8) {
       return toast(`Select exactly 8 cards to discard (${discardSelection.length}/8 selected)`);
@@ -863,7 +875,7 @@
 
     // My hand
     if (yourHand) {
-      myHand = sortHand(yourHand);
+      myHand = sortHand(yourHand, trumpSuit);
       renderHand();
     }
 
@@ -1073,6 +1085,7 @@
       if (lastAction?.type === 'draw') {
         addBtn(panel, 'Undo Last Draw', 'ab-orange', undoDraw);
       }
+      addTrumpSelector(panel, gameState.trumpSuit);
       return;
     }
 
@@ -1085,13 +1098,20 @@
       } else {
         addTxt(panel, `Waiting for ${SEAT_NAMES[startingPlayer]} to discard 8 cards…`);
       }
+      addTrumpSelector(panel, gameState.trumpSuit);
       return;
     }
 
     if (phase === 'playing') {
-      // If starting player hasn't picked up bottom 8 yet
-      if (bottomEight?.length > 0 && isStarter) {
-        addBtn(panel, '⭐ Pick Up Bottom 8 Cards', 'ab-gold', pickUpBottomEight);
+      // Trump selector — always shown so any player can declare/change trump
+      addTrumpSelector(panel, gameState.trumpSuit);
+
+      if (bottomEight?.length > 0) {
+        if (isStarter) {
+          addBtn(panel, '⭐ Pick Up Bottom 8 Cards', 'ab-gold', pickUpBottomEight);
+        } else {
+          addTxt(panel, `Waiting for ${SEAT_NAMES[startingPlayer]} to handle bottom 8…`);
+        }
         return;
       }
 
@@ -1102,6 +1122,37 @@
              playSelection.length === 0 || !isMyTurn);
       addBtn(panel, 'Clear Trick', 'ab-ghost', clearTrick);
     }
+  }
+
+  function addTrumpSelector(panel, currentTrump) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'color:rgba(255,255,255,0.6);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-right:2px;';
+    lbl.textContent = 'Trump:';
+    wrap.appendChild(lbl);
+
+    ['H','S','D','C'].forEach(suit => {
+      const { sym, col } = SUITS[suit];
+      const active = suit === currentTrump;
+      const b = document.createElement('button');
+      b.className = 'ab';
+      b.style.cssText = [
+        `background:${active ? (col==='red'?'#dc2626':'#1e293b') : 'rgba(255,255,255,0.12)'}`,
+        `color:${col==='red'?'#fca5a5':'#e2e8f0'}`,
+        `font-size:22px`,
+        `padding:7px 13px`,
+        `border:2px solid ${active ? (col==='red'?'#f87171':'#94a3b8') : 'rgba(255,255,255,0.2)'}`,
+        active ? 'box-shadow:0 0 12px rgba(255,255,255,0.25)' : '',
+      ].join(';');
+      b.title = active ? `Trump is ${sym}` : `Set trump to ${sym}`;
+      b.textContent = sym;
+      b.onclick = () => declareTrump(suit);
+      wrap.appendChild(b);
+    });
+
+    panel.appendChild(wrap);
   }
 
   function addBtn(panel, text, cls, fn, disabled = false) {
@@ -1137,13 +1188,27 @@
     return el;
   }
 
-  function sortHand(hand) {
-    const SO = { S:1, H:2, D:3, C:4 };
+  function sortHand(hand, trumpSuit) {
+    // Per-trump suit ordering gives R-B-R-B alternation for non-trump suits,
+    // with trump cards grouped at the end, jokers after trump.
+    const SUIT_ORDERS = {
+      H: { S:0, D:1, C:2, H:3 },  // B R B | R
+      S: { H:0, C:1, D:2, S:3 },  // R B R | B
+      D: { C:0, H:1, S:2, D:3 },  // B R B | R
+      C: { H:0, S:1, D:2, C:3 },  // R B R | B
+    };
+    const order = SUIT_ORDERS[trumpSuit] || { H:0, S:1, D:2, C:3 };
+
     return [...hand].sort((a, b) => {
-      if (!a.suit && !b.suit) return a.rank - b.rank;
-      if (!a.suit) return 1;
-      if (!b.suit) return -1;
-      return (SO[a.suit] - SO[b.suit]) || (a.rank - b.rank);
+      const aJ = !!a.jokerType, bJ = !!b.jokerType;
+      const aT = !aJ && a.suit === trumpSuit;
+      const bT = !bJ && b.suit === trumpSuit;
+
+      if (aJ && bJ) return a.rank - b.rank;
+      if (aJ) return 1;  if (bJ) return -1;
+      if (aT && bT) return a.rank - b.rank;
+      if (aT) return 1;  if (bT) return -1;
+      return (order[a.suit] ?? 9) - (order[b.suit] ?? 9) || (a.rank - b.rank);
     });
   }
 
