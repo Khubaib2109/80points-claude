@@ -763,9 +763,9 @@
   }
 
   function joinTeam(team) {
-    if (!gameState) return;
-    const seats = team === 'defenders' ? ['N', 'S'] : ['E', 'W'];
-    const free = seats.find(s => !gameState.seats[s]);
+    const candidates = team === 'defenders' ? ['N', 'S'] : ['E', 'W'];
+    const takenSeats = gameState?.seats || {};
+    const free = candidates.find(s => !takenSeats[s]);
     if (!free) return toast(`Both ${team} seats are taken!`);
     takeSeat(free);
   }
